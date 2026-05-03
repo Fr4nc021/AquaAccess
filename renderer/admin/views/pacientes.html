@@ -1,0 +1,167 @@
+<section class="admin-view" id="view-pacientes" hidden aria-labelledby="nav-pacientes">
+  <header class="admin-view-head">
+    <div class="admin-view-head__text">
+      <h1 class="admin-view-head__title">Pacientes</h1>
+      <p class="admin-view-head__desc">Busca, filtros por situação do exame e gestão de cadastro.</p>
+    </div>
+  </header>
+
+  <div class="admin-pacientes-toolbar">
+    <label class="admin-pacientes-search">
+      <span class="admin-pacientes-search__icon admin-topbar__glyph" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+      </span>
+      <input
+        type="search"
+        id="pacientes-search"
+        class="admin-pacientes-search__input"
+        placeholder="Buscar por nome ou CPF…"
+        autocomplete="off"
+      />
+    </label>
+    <div class="admin-pacientes-filters" role="tablist" aria-label="Filtrar por situação">
+      <button type="button" class="admin-filter-pill admin-filter-pill--active" data-filter="todos" role="tab" aria-selected="true">
+        Todos
+      </button>
+      <button type="button" class="admin-filter-pill" data-filter="valido" role="tab" aria-selected="false">Válido</button>
+      <button type="button" class="admin-filter-pill" data-filter="vencendo" role="tab" aria-selected="false">Vencendo</button>
+      <button type="button" class="admin-filter-pill" data-filter="vencido" role="tab" aria-selected="false">Vencido</button>
+      <button type="button" class="admin-filter-pill" data-filter="bloqueado" role="tab" aria-selected="false">Bloqueado</button>
+    </div>
+    <button type="button" class="admin-pacientes-more" id="pacientes-more-filters" title="Mais filtros (em breve)" aria-label="Mais filtros">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="admin-table-wrap">
+    <div class="admin-table-scroll">
+      <table class="admin-data-table" aria-label="Lista de pacientes">
+        <thead>
+          <tr>
+            <th scope="col">Paciente</th>
+            <th scope="col">CPF</th>
+            <th scope="col">Última entrada</th>
+            <th scope="col">Validade</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="admin-data-table__col-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="pacientes-tbody"></tbody>
+      </table>
+    </div>
+    <p id="pacientes-empty" class="admin-pacientes-empty" hidden>Nenhum paciente encontrado.</p>
+  </div>
+</section>
+
+<div
+  id="modal-edit-patient"
+  class="admin-modal"
+  hidden
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modal-edit-patient-title"
+>
+  <div class="admin-modal__backdrop" id="modal-edit-patient-backdrop"></div>
+  <div class="admin-modal__panel admin-modal__panel--split">
+    <div class="admin-modal__split-visual" aria-hidden="true">
+      <div class="admin-modal__split-visual-inner">
+        <img class="admin-modal__split-logo" src="../public/logo-white.png" width="220" height="52" alt="" />
+        <p class="admin-modal__split-tagline">Cadastro do paciente</p>
+      </div>
+    </div>
+    <div class="admin-modal__split-main">
+      <h2 id="modal-edit-patient-title" class="admin-modal__title">Editar paciente</h2>
+      <form id="form-edit-patient" class="admin-modal__form">
+        <input type="hidden" id="edit-patient-id" name="id" value="" />
+        <label class="admin-modal__field">
+          <span class="admin-modal__label">Nome completo</span>
+          <input type="text" id="edit-fullname" name="fullName" class="admin-modal__input" required autocomplete="name" />
+        </label>
+        <label class="admin-modal__field">
+          <span class="admin-modal__label">CPF</span>
+          <input type="text" id="edit-cpf" name="cpf" class="admin-modal__input" inputmode="numeric" required autocomplete="off" />
+        </label>
+        <label class="admin-modal__field">
+          <span class="admin-modal__label">Telefone</span>
+          <input type="tel" id="edit-phone" name="phone" class="admin-modal__input" inputmode="tel" required autocomplete="tel" />
+        </label>
+        <p id="edit-patient-msg" class="admin-modal__msg" hidden></p>
+        <div class="admin-modal__actions">
+          <button type="button" class="admin-modal__btn admin-modal__btn--ghost" id="modal-edit-cancel">Cancelar</button>
+          <button type="submit" class="admin-modal__btn admin-modal__btn--primary" id="modal-edit-save">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div
+  id="modal-paciente-confirm"
+  class="admin-modal admin-modal--stack"
+  hidden
+  role="alertdialog"
+  aria-modal="true"
+  aria-labelledby="modal-paciente-confirm-title"
+  aria-describedby="modal-paciente-confirm-desc"
+>
+  <div class="admin-modal__backdrop" id="modal-paciente-confirm-backdrop" tabindex="-1"></div>
+  <div class="admin-modal__panel admin-modal__panel--split admin-modal__panel--confirm">
+    <div class="admin-modal__split-visual admin-modal__split-visual--confirm" aria-hidden="true">
+      <div class="admin-modal__split-visual-inner">
+        <span class="admin-modal__split-icon admin-modal__split-icon--confirm">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
+        </span>
+        <p class="admin-modal__split-tagline">Confirmação necessária</p>
+      </div>
+    </div>
+    <div class="admin-modal__split-main">
+      <h2 id="modal-paciente-confirm-title" class="admin-modal__title">Confirmar</h2>
+      <p id="modal-paciente-confirm-desc" class="admin-modal__text"></p>
+      <div class="admin-modal__actions">
+        <button type="button" class="admin-modal__btn admin-modal__btn--ghost" id="modal-paciente-confirm-cancel">Cancelar</button>
+        <button type="button" class="admin-modal__btn admin-modal__btn--primary" id="modal-paciente-confirm-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div
+  id="modal-paciente-alert"
+  class="admin-modal admin-modal--stack"
+  hidden
+  role="alertdialog"
+  aria-modal="true"
+  aria-labelledby="modal-paciente-alert-title"
+  aria-describedby="modal-paciente-alert-desc"
+>
+  <div class="admin-modal__backdrop" id="modal-paciente-alert-backdrop" tabindex="-1"></div>
+  <div class="admin-modal__panel admin-modal__panel--split admin-modal__panel--confirm">
+    <div class="admin-modal__split-visual admin-modal__split-visual--alert" aria-hidden="true">
+      <div class="admin-modal__split-visual-inner">
+        <span class="admin-modal__split-icon admin-modal__split-icon--alert">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </span>
+        <p class="admin-modal__split-tagline">Atenção</p>
+      </div>
+    </div>
+    <div class="admin-modal__split-main">
+      <h2 id="modal-paciente-alert-title" class="admin-modal__title">Aviso</h2>
+      <p id="modal-paciente-alert-desc" class="admin-modal__text"></p>
+      <div class="admin-modal__actions admin-modal__actions--single">
+        <button type="button" class="admin-modal__btn admin-modal__btn--primary" id="modal-paciente-alert-ok">OK</button>
+      </div>
+    </div>
+  </div>
+</div>

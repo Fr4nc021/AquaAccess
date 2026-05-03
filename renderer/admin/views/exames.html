@@ -1,0 +1,31 @@
+<section class="admin-view" id="view-exames" hidden aria-labelledby="nav-exames">
+  <header class="admin-view-head">
+    <div class="admin-view-head__text">
+      <h1 class="admin-view-head__title">Exames realizados</h1>
+      <p class="admin-view-head__desc">
+        Histórico de exames registrados. Use a busca no topo da página para filtrar por nome, CPF ou status.
+      </p>
+    </div>
+  </header>
+
+  <p id="admin-exames-feedback" class="admin-sync-msg admin-sync-msg--err" hidden></p>
+
+  <div class="admin-table-wrap">
+    <div class="admin-table-scroll">
+      <table class="admin-data-table" aria-label="Exames realizados">
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">Validade</th>
+            <th scope="col">Paciente</th>
+            <th scope="col">CPF</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="admin-data-table__col-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="admin-tbody-exames"></tbody>
+      </table>
+    </div>
+    <p id="admin-exames-empty" class="admin-pacientes-empty" hidden>Nenhum exame registrado ainda.</p>
+  </div>
+</section>

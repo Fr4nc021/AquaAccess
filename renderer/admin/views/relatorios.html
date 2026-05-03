@@ -1,0 +1,118 @@
+<section class="admin-view" id="view-relatorios" hidden aria-labelledby="relatorios-title">
+  <div class="admin-reports">
+    <header class="admin-reports__head">
+      <div class="admin-reports__head-text">
+        <h1 class="admin-view-head__title" id="relatorios-title">Relatórios</h1>
+        <p class="admin-view-head__desc">Exporte dados para PDF ou Excel. Foco: exames vencendo e contato via WhatsApp.</p>
+      </div>
+      <div class="admin-reports__exports">
+        <button type="button" class="admin-reports__btn admin-reports__btn--ghost" id="reports-export-pdf" title="Abrir impressão / salvar em PDF">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <line x1="10" y1="9" x2="8" y2="9" />
+          </svg>
+          Exportar PDF
+        </button>
+        <button type="button" class="admin-reports__btn admin-reports__btn--primary" id="reports-export-csv" title="Planilha CSV (Excel)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <path d="M4 4h4l2 3h10v12H4z" />
+            <path d="M8 12h8M8 16h5" />
+          </svg>
+          Exportar Excel
+        </button>
+      </div>
+    </header>
+
+    <div class="admin-reports__filters">
+      <div class="admin-reports__filters-row">
+        <div class="admin-reports__period-card" aria-labelledby="reports-period-heading">
+          <span class="admin-reports__period-card-title" id="reports-period-heading">Período</span>
+          <div class="admin-reports__filter-grid admin-reports__filter-grid--compact">
+            <label class="admin-reports__date-field">
+              <span class="admin-reports__date-label">Início</span>
+              <input type="date" class="admin-reports__date-input" id="reports-period-start" />
+            </label>
+            <label class="admin-reports__date-field">
+              <span class="admin-reports__date-label">Fim</span>
+              <input type="date" class="admin-reports__date-input" id="reports-period-end" />
+            </label>
+            <div class="admin-reports__filter-actions">
+              <button type="button" class="admin-reports__apply" id="reports-apply-filters">Aplicar</button>
+            </div>
+          </div>
+        </div>
+        <div class="admin-reports__quick-actions" role="group" aria-label="Atalhos — exames vencendo">
+          <button type="button" class="admin-reports__quick" id="reports-quick-week" title="Define o período para esta semana e o indicador Exames vencendo">
+            <span class="admin-reports__quick-title">Esta semana</span>
+            <span class="admin-reports__quick-desc">Vencendo esta semana</span>
+          </button>
+          <button type="button" class="admin-reports__quick" id="reports-quick-month" title="Define o período para este mês e o indicador Exames vencendo">
+            <span class="admin-reports__quick-title">Este mês</span>
+            <span class="admin-reports__quick-desc">Vencendo este mês</span>
+          </button>
+        </div>
+      </div>
+      <p class="admin-reports__meta" id="reports-blocked-hint" aria-live="polite"></p>
+    </div>
+
+    <div class="admin-reports__kpi" role="tablist" aria-label="Indicadores do relatório">
+      <button type="button" class="admin-reports__kpi-card" data-report-kpi="realizados" role="tab" aria-selected="false">
+        <span class="admin-reports__kpi-title">Exames realizados</span>
+        <span class="admin-reports__kpi-value" id="reports-kpi-exames">0</span>
+        <span class="admin-reports__kpi-desc">Registros por período</span>
+      </button>
+      <button
+        type="button"
+        class="admin-reports__kpi-card admin-reports__kpi-card--active"
+        data-report-kpi="vencendo"
+        role="tab"
+        aria-selected="true"
+      >
+        <span class="admin-reports__kpi-title">Exames vencendo</span>
+        <span class="admin-reports__kpi-value" id="reports-kpi-vencendo">0</span>
+        <span class="admin-reports__kpi-desc">Validade no período — contato WhatsApp</span>
+      </button>
+      <button type="button" class="admin-reports__kpi-card" data-report-kpi="entradas" role="tab" aria-selected="false">
+        <span class="admin-reports__kpi-title">Entradas liberadas</span>
+        <span class="admin-reports__kpi-value" id="reports-kpi-entradas">0</span>
+        <span class="admin-reports__kpi-desc">Acessos concedidos no período</span>
+      </button>
+      <button type="button" class="admin-reports__kpi-card" data-report-kpi="vencidas" role="tab" aria-selected="false">
+        <span class="admin-reports__kpi-title">Pessoas vencidas</span>
+        <span class="admin-reports__kpi-value" id="reports-kpi-vencidas">0</span>
+        <span class="admin-reports__kpi-desc">Validade encerrada no período</span>
+      </button>
+    </div>
+
+    <article class="admin-reports__panel">
+      <div class="admin-reports__panel-head">
+        <div>
+          <h2 class="admin-reports__panel-title" id="reports-panel-title">Exames vencendo no período</h2>
+          <p class="admin-reports__panel-lead" id="reports-panel-lead">
+            Pacientes com validade entre hoje e o fim do período. Use WhatsApp para lembrar da renovação.
+          </p>
+        </div>
+      </div>
+
+      <div class="admin-reports__table-wrap">
+        <table class="admin-data-table admin-reports__table" aria-describedby="reports-panel-lead">
+          <thead>
+            <tr>
+              <th scope="col">Paciente</th>
+              <th scope="col">CPF</th>
+              <th scope="col">Exame</th>
+              <th scope="col">Validade</th>
+              <th scope="col">Telefone</th>
+              <th scope="col" class="admin-data-table__col-actions">WhatsApp</th>
+            </tr>
+          </thead>
+          <tbody id="reports-tbody"></tbody>
+        </table>
+        <p id="reports-empty" class="admin-reports__empty" hidden>Nenhum registro para este indicador e período.</p>
+      </div>
+    </article>
+  </div>
+</section>

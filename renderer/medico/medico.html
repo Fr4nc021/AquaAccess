@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <link rel="stylesheet" href="../shared/base.css" />
+    <link rel="stylesheet" href="medico.css" />
+  </head>
+  <body class="medico-app">
+    <aside class="medico-sidebar">
+      <div class="medico-sidebar__brand">
+        <img class="medico-sidebar__logo" src="../public/logo-white.png" width="240" height="56" alt="" />
+        <div class="medico-sidebar__titles">
+          <p class="medico-sidebar__name">AquaAccess</p>
+          <p class="medico-sidebar__tag">PAINEL MÉDICO</p>
+        </div>
+      </div>
+
+      <nav class="medico-sidebar__nav" aria-label="Menu principal">
+        <button
+          type="button"
+          class="medico-nav-item medico-nav-item--active"
+          data-page="pacientes"
+          id="nav-pacientes"
+          aria-current="page"
+        >
+          <img
+            class="medico-nav-item__icon medico-icon-img"
+            src="../public/icons_medico/paciente.png"
+            width="20"
+            height="20"
+            alt=""
+          />
+          Pacientes
+        </button>
+        <button type="button" class="medico-nav-item" data-page="exames" id="nav-exames" aria-current="false">
+          <img
+            class="medico-nav-item__icon medico-icon-img"
+            src="../public/icons_medico/exame.png"
+            width="20"
+            height="20"
+            alt=""
+          />
+          Exames feitos
+        </button>
+      </nav>
+
+      <div class="medico-sidebar__footer">
+        <div class="medico-user">
+          <div class="medico-user__avatar" id="user-avatar" aria-hidden="true"></div>
+          <div class="medico-user__info">
+            <p class="medico-user__name" id="sidebar-user-name">—</p>
+            <button type="button" class="medico-user__out medico-topbar__glyph" id="btn-logout" title="Sair">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="medico-workspace">
+      <header class="medico-topbar">
+        <label class="medico-topbar__search">
+          <span class="medico-topbar__search-icon medico-topbar__glyph" aria-hidden="true">
+            <img
+              class="medico-icon-img medico-icon-img--sm"
+              src="../public/icons_medico/paciente.png"
+              width="18"
+              height="18"
+              alt=""
+            />
+          </span>
+          <input
+            type="search"
+            class="medico-topbar__input"
+            placeholder="Buscar paciente, CPF…"
+            id="topbar-search"
+            autocomplete="off"
+          />
+        </label>
+        <div class="medico-topbar__right">
+          <span class="medico-status-pill">
+            <span class="medico-status-pill__dot" aria-hidden="true"></span>
+            Online
+          </span>
+          <span class="medico-topbar__badge">Italbras</span>
+        </div>
+      </header>
+
+      <main class="medico-main">
+        <section class="medico-view medico-view--active" id="view-pacientes" aria-labelledby="nav-pacientes">
+          <header class="medico-view-head">
+            <div class="medico-view-head__text">
+              <h1 class="medico-view-head__title">
+                <img
+                  class="medico-view-head__title-icon"
+                  src="../public/icons_medico/paciente.png"
+                  width="28"
+                  height="28"
+                  alt=""
+                />
+                Pacientes
+              </h1>
+              <p class="medico-view-head__desc">
+                Busque pelo nome para editar ou excluir. Nome, CPF, telefone e foto são obrigatórios. Exame com
+                validade de 30 dias.
+              </p>
+            </div>
+          </header>
+
+          <div class="medico-tabpanel">
+            <div class="medico-card">
+              <h2 class="medico-section-head medico-section-head--card">Incluir novo paciente</h2>
+              <form id="form-patient" class="medico-patient-form">
+                <div class="medico-patient-form__photo">
+                  <div class="medico-photo-frame" id="photo-frame">
+                    <img id="photo-preview" class="medico-photo-frame__img" alt="Pré-visualização da foto" hidden />
+                    <div id="photo-placeholder" class="medico-photo-frame__placeholder">
+                      <img
+                        class="medico-photo-placeholder-icon"
+                        src="../public/icons_medico/paciente.png"
+                        width="44"
+                        height="44"
+                        alt=""
+                        aria-hidden="true"
+                      />
+                      <span>Foto do paciente (obrigatória)</span>
+                    </div>
+                  </div>
+                  <div class="medico-photo-btns">
+                    <button type="button" class="medico-btn medico-btn--outline medico-btn--with-icon" id="btn-pick-file">
+                      <img
+                        class="medico-icon-img medico-icon-img--sm"
+                        src="../public/icons_medico/editar-texto.png"
+                        width="18"
+                        height="18"
+                        alt=""
+                      />
+                      Upload
+                    </button>
+                    <input type="file" id="input-photo" accept="image/*" hidden />
+                  </div>
+                </div>
+
+                <div class="medico-patient-form__fields">
+                  <label class="medico-inp medico-inp--ac">
+                    <span class="medico-inp__label">NOME COMPLETO</span>
+                    <div class="medico-ac" id="wrap-name-ac">
+                      <input type="hidden" name="patientId" id="field-patient-id" value="" />
+                      <input
+                        type="text"
+                        name="fullName"
+                        id="field-fullname"
+                        required
+                        placeholder="Digite para buscar ou cadastrar…"
+                        autocomplete="off"
+                        spellcheck="false"
+                      />
+                      <div id="name-suggest" class="medico-ac__panel" hidden role="listbox" aria-label="Sugestões"></div>
+                    </div>
+                  </label>
+                  <div class="medico-inp-row medico-inp-row--cpf-phone">
+                    <div class="medico-inp-col medico-inp-col--cpf">
+                      <label class="medico-inp">
+                        <span class="medico-inp__label">CPF</span>
+                        <input
+                          type="text"
+                          name="cpf"
+                          id="field-cpf"
+                          required
+                          placeholder="000.000.000-00"
+                          maxlength="14"
+                          inputmode="numeric"
+                          autocomplete="off"
+                        />
+                      </label>
+                      <div class="medico-cpf-actions">
+                        <button
+                          type="button"
+                          class="medico-btn medico-btn--outline medico-btn--with-icon medico-btn-validar-exame"
+                          id="btn-validar-exame"
+                        >
+                          <img
+                            class="medico-icon-img medico-icon-img--sm"
+                            src="../public/icons_medico/editar-texto.png"
+                            width="18"
+                            height="18"
+                            alt=""
+                          />
+                          Validar exame médico
+                        </button>
+                      </div>
+                    </div>
+                    <label class="medico-inp">
+                      <span class="medico-inp__label">TELEFONE</span>
+                      <input
+                        type="tel"
+                        name="phone"
+                        id="field-phone"
+                        required
+                        placeholder="(00) 00000-0000"
+                        autocomplete="tel"
+                      />
+                    </label>
+                  </div>
+
+                  <div id="patient-msg" class="medico-msg" hidden role="status" aria-live="polite"></div>
+
+                  <div class="medico-actions">
+                    <button
+                      type="button"
+                      class="medico-btn medico-btn--danger medico-btn--with-icon"
+                      id="btn-delete-patient"
+                      disabled
+                      aria-disabled="true"
+                    >
+                      <img
+                        class="medico-icon-img medico-icon-img--sm"
+                        src="../public/icons_medico/lixo.png"
+                        width="18"
+                        height="18"
+                        alt=""
+                      />
+                      Excluir paciente
+                    </button>
+                    <div class="medico-actions__end">
+                      <button type="button" class="medico-btn medico-btn--ghost" id="btn-reset-patient">Cancelar</button>
+                      <button type="submit" class="medico-btn medico-btn--primary medico-btn--with-icon" id="btn-save-patient">
+                        <img
+                          class="medico-icon-img medico-icon-img--sm"
+                          src="../public/icons_medico/paciente.png"
+                          width="18"
+                          height="18"
+                          alt=""
+                        />
+                        Salvar paciente
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div
+              class="medico-card medico-card--readonly medico-overview"
+              role="region"
+              aria-label="Pacientes cadastrados — somente visualização"
+            >
+              <div class="medico-overview__head">
+                <div class="medico-overview__intro">
+                  <h2 class="medico-section-head medico-section-head--card">Pacientes cadastrados</h2>
+                  <p class="medico-overview__hint">
+                    Somente leitura. Inclusão e edição são feitas no formulário acima.
+                  </p>
+                </div>
+                <label class="medico-inp medico-overview__filter">
+                  <span class="medico-inp__label">Atenção</span>
+                  <select id="overview-filter-attention" class="medico-select">
+                    <option value="todos">Todos</option>
+                    <option value="vence_semana">Vence nesta semana</option>
+                    <option value="vencido">Vencido</option>
+                    <option value="valido">Válido</option>
+                    <option value="sem_exame">Sem exame válido</option>
+                  </select>
+                </label>
+              </div>
+              <div class="medico-table-scroll medico-table-scroll--overview">
+                <table class="medico-table medico-table--readonly" aria-readonly="true">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>CPF</th>
+                      <th>Telefone</th>
+                      <th>Validade</th>
+                      <th>Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-patients-overview"></tbody>
+                </table>
+                <p id="overview-empty" class="medico-empty" hidden>Nenhum paciente neste filtro.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="medico-view" id="view-exames" aria-labelledby="nav-exames" hidden>
+          <header class="medico-view-head">
+            <div class="medico-view-head__text">
+              <h1 class="medico-view-head__title">
+                <img
+                  class="medico-view-head__title-icon"
+                  src="../public/icons_medico/exame.png"
+                  width="28"
+                  height="28"
+                  alt=""
+                />
+                Exames feitos
+              </h1>
+              <p class="medico-view-head__desc">
+                Lista de exames médicos registrados. Validade de 30 dias a partir da data do exame. Use a busca para
+                filtrar por paciente, CPF ou datas.
+              </p>
+            </div>
+          </header>
+
+          <div class="medico-tabpanel">
+            <div class="medico-card medico-card--readonly medico-exames-card" role="region" aria-label="Exames realizados">
+              <div class="medico-exames-card__head">
+                <h2 class="medico-section-head medico-section-head--card">Exames realizados</h2>
+                <p class="medico-overview__hint">
+                  Somente visualização. Novos exames são registrados na área Pacientes, botão &quot;Validar exame
+                  médico&quot;.
+                </p>
+              </div>
+              <div class="medico-table-scroll medico-table-scroll--overview">
+                <table class="medico-table medico-table--readonly" aria-readonly="true">
+                  <thead>
+                    <tr>
+                      <th>Data do exame</th>
+                      <th>Validade</th>
+                      <th>Paciente</th>
+                      <th>CPF</th>
+                      <th>Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-exams-done"></tbody>
+                </table>
+                <p id="exams-done-empty" class="medico-empty" hidden>Nenhum exame registrado ainda.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <div id="modal-delete-patient" class="medico-modal" hidden role="presentation">
+      <div class="medico-modal__backdrop" id="modal-delete-backdrop" tabindex="-1" aria-hidden="true"></div>
+      <div
+        class="medico-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-delete-title"
+        aria-describedby="modal-delete-desc"
+      >
+        <h2 id="modal-delete-title" class="medico-modal__title">Excluir este paciente?</h2>
+        <p id="modal-delete-desc" class="medico-modal__text">
+          O cadastro será removido. Não é possível desfazer.
+        </p>
+        <div class="medico-modal__actions">
+          <button type="button" class="medico-btn medico-btn--ghost" id="modal-delete-cancel">Cancelar</button>
+          <button type="button" class="medico-btn medico-btn--danger" id="modal-delete-confirm">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="medico.js"></script>
+  </body>
+</html>

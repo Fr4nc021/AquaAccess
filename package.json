@@ -1,0 +1,21 @@
+{
+  "name": "facial",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Controle de acesso às piscinas do clube (desktop, offline-first)",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "sql.js": "^1.13.0"
+  },
+  "devDependencies": {
+    "electron": "^41.4.0",
+    "electron-reloader": "^1.2.3"
+  }
+}

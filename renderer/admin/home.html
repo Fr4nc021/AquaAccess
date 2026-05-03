@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <link rel="stylesheet" href="../shared/base.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body class="admin-app">
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar__brand" role="button" tabindex="0" id="sidebar-brand" title="Visão geral">
+        <img class="admin-sidebar__logo" src="../public/logo-white.png" width="240" height="56" alt="" />
+        <div class="admin-sidebar__titles">
+          <p class="admin-sidebar__name" id="sidebar-system-name">AquaAccess</p>
+          <p class="admin-sidebar__tag">PAINEL ADMINISTRATIVO</p>
+        </div>
+      </div>
+
+      <nav class="admin-sidebar__nav" aria-label="Menu principal">
+        <button type="button" class="admin-nav-item" data-page="pacientes" id="nav-pacientes">
+          <span class="admin-nav-item__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          Pacientes
+        </button>
+        <button type="button" class="admin-nav-item" data-page="acessos" id="nav-acessos">
+          <span class="admin-nav-item__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </span>
+          Controle de acessos
+        </button>
+        <button type="button" class="admin-nav-item" data-page="dispositivo" id="nav-dispositivo">
+          <span class="admin-nav-item__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <rect x="2" y="6" width="20" height="12" rx="2" />
+              <circle cx="12" cy="12" r="3" />
+              <path d="M8 18h8" />
+            </svg>
+          </span>
+          Dispositivo facial
+        </button>
+        <button type="button" class="admin-nav-item" data-page="relatorios" id="nav-relatorios">
+          <span class="admin-nav-item__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </span>
+          Relatórios
+        </button>
+        <button type="button" class="admin-nav-item" data-page="sincronizacao" id="nav-sincronizacao">
+          <span class="admin-nav-item__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M23 4v6h-6M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </span>
+          Sincronização
+        </button>
+        <button type="button" class="admin-nav-item" data-page="exames" id="nav-exames">
+          <span class="admin-nav-item__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </span>
+          Exames
+        </button>
+        <button type="button" class="admin-nav-item" data-page="configuracoes" id="nav-configuracoes">
+          <span class="admin-nav-item__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+          </span>
+          Configurações
+        </button>
+      </nav>
+
+      <div class="admin-sidebar__footer">
+        <div class="admin-user">
+          <div class="admin-user__avatar" aria-hidden="true"></div>
+          <div class="admin-user__info">
+            <p class="admin-user__name" id="sidebar-user-name">—</p>
+            <button type="button" class="admin-user__out admin-topbar__glyph" id="btn-logout" title="Sair">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="admin-workspace">
+      <header class="admin-topbar">
+        <label class="admin-topbar__search">
+          <span class="admin-topbar__search-icon admin-topbar__glyph" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </span>
+          <input
+            type="search"
+            class="admin-topbar__input"
+            placeholder="Buscar paciente, CPF…"
+            id="topbar-search"
+            autocomplete="off"
+          />
+        </label>
+        <div class="admin-topbar__right">
+          <span class="admin-status-pill">
+            <span class="admin-status-pill__dot" aria-hidden="true"></span>
+            Online
+          </span>
+          <button type="button" class="admin-icon-btn admin-icon-btn--notify admin-topbar__glyph" title="Notificações" aria-label="Notificações" id="btn-topbar-notify">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span class="admin-icon-btn__badge" id="topbar-notify-count" hidden aria-hidden="true">0</span>
+          </button>
+          <span class="admin-topbar__club">
+            <span class="admin-topbar__glyph admin-topbar__wifi" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                <path d="M12 20h.01" />
+              </svg>
+            </span>
+            <span class="admin-topbar__badge" id="topbar-club-badge">Intelbras</span>
+            <span class="admin-topbar__club-dot" aria-hidden="true"></span>
+          </span>
+        </div>
+      </header>
+
+      <main class="admin-main" id="admin-views-root"></main>
+    </div>
+
+    <script src="admin-views-loader.js"></script>
+  </body>
+</html>

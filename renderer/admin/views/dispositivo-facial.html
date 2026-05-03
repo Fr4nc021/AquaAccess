@@ -1,0 +1,118 @@
+<section class="admin-view" id="view-dispositivo" hidden aria-labelledby="nav-dispositivo">
+  <header class="admin-view-head">
+    <div class="admin-view-head__text">
+      <h1 class="admin-view-head__title">Dispositivo facial</h1>
+      <p class="admin-view-head__desc" id="device-page-desc">—</p>
+    </div>
+  </header>
+
+  <div class="admin-device-layout">
+    <div class="admin-device-col admin-device-col--main">
+      <article class="admin-device-summary">
+        <div class="admin-device-summary__head">
+          <div class="admin-device-summary__brand">
+            <div class="admin-device-summary__icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="6" width="20" height="12" rx="2" />
+                <circle cx="12" cy="12" r="3" />
+                <path d="M8 18h8" />
+              </svg>
+            </div>
+            <div>
+              <p class="admin-device-summary__name" id="device-summary-name">—</p>
+              <p class="admin-device-summary__hint">IP e rede do leitor em Configurações.</p>
+            </div>
+          </div>
+          <span class="admin-device-status" id="device-status-wrap">
+            <span class="admin-device-status__dot" id="device-status-dot" aria-hidden="true"></span>
+            <span id="device-status-label">Desconectado</span>
+            <span class="admin-device-status__wifi" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                <path d="M12 20h.01" />
+              </svg>
+            </span>
+          </span>
+        </div>
+        <div class="admin-device-metrics">
+          <div class="admin-device-metric">
+            <p class="admin-device-metric__label">Última sincronização</p>
+            <p class="admin-device-metric__value" id="device-metric-last-sync">—</p>
+          </div>
+          <div class="admin-device-metric">
+            <p class="admin-device-metric__label">Usuários sincronizados</p>
+            <p class="admin-device-metric__value" id="device-metric-users">—</p>
+          </div>
+          <div class="admin-device-metric">
+            <p class="admin-device-metric__label">Fotos pendentes</p>
+            <p class="admin-device-metric__value" id="device-metric-photos">0</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="admin-panel admin-panel--device-actions">
+        <div class="admin-panel__head">
+          <div>
+            <h2 class="admin-panel__title">Ações do dispositivo</h2>
+            <p class="admin-panel__subtitle">Comandos enviados ao leitor facial</p>
+          </div>
+        </div>
+        <div class="admin-device-actions">
+          <button type="button" class="admin-device-action" data-device-action="connect">
+            <span class="admin-device-action__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            </span>
+            <span class="admin-device-action__title">Conectar</span>
+            <span class="admin-device-action__desc">Estabelecer conexão</span>
+          </button>
+          <button type="button" class="admin-device-action" data-device-action="sync">
+            <span class="admin-device-action__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M23 4v6h-6M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            </span>
+            <span class="admin-device-action__title">Sincronizar usuários</span>
+            <span class="admin-device-action__desc" id="device-action-sync-sub">Enviar cadastros ao dispositivo</span>
+          </button>
+          <button type="button" class="admin-device-action" data-device-action="photos">
+            <span class="admin-device-action__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </span>
+            <span class="admin-device-action__title">Enviar fotos pendentes</span>
+            <span class="admin-device-action__desc" id="device-action-photos-sub">Nenhuma foto na fila</span>
+          </button>
+          <button type="button" class="admin-device-action" data-device-action="block">
+            <span class="admin-device-action__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+              </svg>
+            </span>
+            <span class="admin-device-action__title">Bloquear usuário</span>
+            <span class="admin-device-action__desc">Restrição manual por CPF</span>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <article class="admin-panel admin-panel--device-logs">
+      <div class="admin-panel__head">
+        <div>
+          <h2 class="admin-panel__title">Logs de eventos</h2>
+          <p class="admin-panel__subtitle" id="device-logs-subtitle">Até 10 eventos mais recentes</p>
+        </div>
+      </div>
+      <ul id="device-logs-list" class="admin-device-log-list" aria-label="Logs do dispositivo"></ul>
+      <p id="device-logs-empty" class="admin-device-log-empty" hidden>Nenhum evento registrado ainda.</p>
+    </article>
+  </div>
+</section>

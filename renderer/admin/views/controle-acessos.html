@@ -1,0 +1,65 @@
+<section class="admin-view" id="view-acessos" hidden aria-labelledby="nav-acessos">
+  <header class="admin-view-head">
+    <div class="admin-view-head__text">
+      <h1 class="admin-view-head__title">Controle de acesso</h1>
+      <p class="admin-view-head__desc">
+        Consulta dos eventos em tempo real na entrada da piscina (somente leitura).
+      </p>
+    </div>
+  </header>
+
+  <div class="admin-access-summary">
+    <article class="admin-stat-card admin-access-stat">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Acessos hoje</p>
+        <p class="admin-stat-card__value" id="acessos-stat-total">0</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--orange" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      </div>
+    </article>
+    <article class="admin-stat-card admin-access-stat">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Liberados</p>
+        <p class="admin-stat-card__value" id="acessos-stat-granted">0</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--green" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+      </div>
+    </article>
+    <article class="admin-stat-card admin-access-stat">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Negados</p>
+        <p class="admin-stat-card__value" id="acessos-stat-denied">0</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--red" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+      </div>
+    </article>
+  </div>
+
+  <article class="admin-panel admin-panel--access">
+    <div class="admin-panel__head admin-panel__head--access">
+      <div>
+        <h2 class="admin-panel__title">Eventos recentes</h2>
+        <p class="admin-panel__subtitle">Atualização em tempo real</p>
+      </div>
+      <span class="admin-live-pill">
+        <span class="admin-live-pill__dot" aria-hidden="true"></span>
+        Ao vivo
+      </span>
+    </div>
+    <ul id="acessos-list" class="admin-access-list" aria-label="Eventos de acesso"></ul>
+    <p id="acessos-empty" class="admin-access-empty" hidden>Nenhum evento registrado ainda.</p>
+  </article>
+</section>

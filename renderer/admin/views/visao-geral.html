@@ -1,0 +1,158 @@
+<section class="admin-view admin-view--active" id="view-dashboard" aria-labelledby="dashboard-title">
+  <header class="admin-view-head">
+    <div class="admin-view-head__text">
+      <h1 class="admin-view-head__title" id="dashboard-title">Visão geral</h1>
+      <p class="admin-view-head__desc">Acompanhamento operacional do clube</p>
+    </div>
+  </header>
+
+  <div class="admin-summary-grid">
+    <article class="admin-stat-card">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Total pacientes</p>
+        <p class="admin-stat-card__value">545</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--blue" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </div>
+    </article>
+    <article class="admin-stat-card">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Exames válidos</p>
+        <p class="admin-stat-card__value">412</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--green" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+      </div>
+    </article>
+    <article class="admin-stat-card">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Exames vencidos</p>
+        <p class="admin-stat-card__value">73</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--red" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+    </article>
+    <article class="admin-stat-card">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Acessos hoje</p>
+        <p class="admin-stat-card__value">234</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--orange" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      </div>
+    </article>
+    <article class="admin-stat-card">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Sistema</p>
+        <p class="admin-stat-card__value admin-stat-card__value--sm">Online</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--green" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+          <path d="M12 20h.01" />
+        </svg>
+      </div>
+    </article>
+    <article class="admin-stat-card">
+      <div class="admin-stat-card__text">
+        <p class="admin-stat-card__label">Dispositivo</p>
+        <p class="admin-stat-card__value admin-stat-card__value--sm">Conectado</p>
+      </div>
+      <div class="admin-stat-card__icon admin-stat-card__icon--green" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <rect x="2" y="6" width="20" height="12" rx="2" />
+          <circle cx="12" cy="12" r="3" />
+          <path d="M8 18h8" />
+        </svg>
+      </div>
+    </article>
+  </div>
+
+  <div class="admin-dashboard-row">
+    <article class="admin-panel admin-panel--chart">
+      <div class="admin-panel__head">
+        <div>
+          <h2 class="admin-panel__title">Exames por mês</h2>
+          <p class="admin-panel__subtitle">Últimos 6 meses</p>
+        </div>
+        <span class="admin-trend-pill">+24% vs período anterior</span>
+      </div>
+      <div class="admin-area-wrap">
+        <svg class="admin-area-chart" viewBox="0 0 520 220" role="img" aria-label="Gráfico de exames por mês">
+          <defs>
+            <linearGradient id="adminAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f97316" stop-opacity="0.45" />
+              <stop offset="100%" stop-color="#f97316" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <g class="admin-area-chart__grid" stroke="rgba(255,255,255,0.06)" stroke-width="1">
+            <line x1="48" y1="40" x2="480" y2="40" />
+            <line x1="48" y1="88" x2="480" y2="88" />
+            <line x1="48" y1="136" x2="480" y2="136" />
+            <line x1="48" y1="184" x2="480" y2="184" />
+          </g>
+          <text class="admin-area-chart__axis" x="40" y="44" text-anchor="end">240</text>
+          <text class="admin-area-chart__axis" x="40" y="92" text-anchor="end">180</text>
+          <text class="admin-area-chart__axis" x="40" y="140" text-anchor="end">120</text>
+          <text class="admin-area-chart__axis" x="40" y="188" text-anchor="end">60</text>
+          <text class="admin-area-chart__axis" x="40" y="200" text-anchor="end">0</text>
+          <path
+            fill="url(#adminAreaGrad)"
+            d="M 72 168 L 144 148 L 216 124 L 288 96 L 360 72 L 432 52 L 432 200 L 72 200 Z"
+          />
+          <path
+            fill="none"
+            stroke="#f97316"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M 72 168 L 144 148 L 216 124 L 288 96 L 360 72 L 432 52"
+          />
+          <g class="admin-area-chart__labels" fill="#6b7c8f" font-size="11">
+            <text x="72" y="214" text-anchor="middle">Out</text>
+            <text x="144" y="214" text-anchor="middle">Nov</text>
+            <text x="216" y="214" text-anchor="middle">Dez</text>
+            <text x="288" y="214" text-anchor="middle">Jan</text>
+            <text x="360" y="214" text-anchor="middle">Fev</text>
+            <text x="432" y="214" text-anchor="middle">Mar</text>
+          </g>
+        </svg>
+      </div>
+    </article>
+
+    <article class="admin-panel admin-panel--donut">
+      <div class="admin-panel__head">
+        <div>
+          <h2 class="admin-panel__title">Status geral</h2>
+          <p class="admin-panel__subtitle">Distribuição dos exames</p>
+        </div>
+      </div>
+      <div class="admin-donut-block">
+        <div class="admin-donut" role="img" aria-label="412 válidos, 48 vencendo, 73 vencidos, 12 bloqueados"></div>
+        <ul class="admin-donut-legend">
+          <li><span class="admin-dot admin-dot--green"></span> Válidos <strong>412</strong></li>
+          <li><span class="admin-dot admin-dot--yellow"></span> Vencendo <strong>48</strong></li>
+          <li><span class="admin-dot admin-dot--red"></span> Vencidos <strong>73</strong></li>
+          <li><span class="admin-dot admin-dot--blue"></span> Bloqueados <strong>12</strong></li>
+        </ul>
+      </div>
+    </article>
+  </div>
+</section>

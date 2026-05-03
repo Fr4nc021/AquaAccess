@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <link rel="stylesheet" href="../shared/base.css" />
+    <link rel="stylesheet" href="login.css" />
+  </head>
+  <body class="login-page">
+    <div class="login-page__grid" aria-hidden="true"></div>
+    <div class="login-shell">
+      <aside class="login-hero">
+        <header class="login-hero__brand">
+          <img class="login-hero__logo" src="../public/logo-white.png" width="420" height="99" alt="Clube Aliança" />
+          <div class="login-hero__titles">
+            <p class="login-hero__name">AquaAccess</p>
+            <p class="login-hero__tag">POOL ACCESS CONTROL</p>
+          </div>
+        </header>
+        <h1 class="login-hero__title">Controle inteligente de acesso às piscinas do clube.</h1>
+        <p class="login-hero__desc">
+          Reconhecimento facial integrado, validação de exames médicos e gestão completa em uma única
+          plataforma.
+        </p>
+        <ul class="login-hero__features">
+          <li>
+            <span class="login-hero__check" aria-hidden="true">✓</span>
+            Reconhecimento Facial Italbras
+          </li>
+          <li>
+            <span class="login-hero__check" aria-hidden="true">✓</span>
+            Sincronização em tempo real
+          </li>
+          <li>
+            <span class="login-hero__check" aria-hidden="true">✓</span>
+            Operação online &amp; offline
+          </li>
+        </ul>
+      </aside>
+
+      <section class="login-panel" aria-label="Formulário de login">
+        <div class="login-panel__top">
+          <div>
+            <p class="login-panel__eyebrow">BEM-VINDO</p>
+            <h2 class="login-panel__title">Entrar no sistema</h2>
+          </div>
+          <div class="login-status" role="status">
+            <span class="login-status__dot" aria-hidden="true"></span>
+            Online
+            <span class="login-status__chev" aria-hidden="true">▾</span>
+          </div>
+        </div>
+
+        <div class="login-tabs" role="tablist" aria-label="Tipo de acesso">
+          <button
+            type="button"
+            role="tab"
+            id="tab-medico"
+            class="login-tab login-tab--active"
+            data-role="medico"
+            aria-selected="true"
+            aria-controls="panel-login"
+            tabindex="0"
+          >
+            <span class="login-tab__icon" aria-hidden="true">
+              <img src="../public/icons_login/medico.png" width="20" height="20" alt="" />
+            </span>
+            <span class="login-tab__text">Médico</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-admin"
+            class="login-tab"
+            data-role="admin"
+            aria-selected="false"
+            aria-controls="panel-login"
+            tabindex="-1"
+          >
+            <span class="login-tab__icon" aria-hidden="true">
+              <img src="../public/icons_login/admin.png" width="20" height="20" alt="" />
+            </span>
+            <span class="login-tab__text">Administrador</span>
+          </button>
+        </div>
+
+        <div id="panel-login" class="login-tabpanel" role="tabpanel" aria-labelledby="tab-medico">
+          <p id="login-role-hint" class="login-tabpanel__hint">
+            Validação de exames e atendimento aos associados.
+          </p>
+
+          <form id="form-login" class="login-form" autocomplete="on">
+          <input type="hidden" name="role" id="field-role" value="medico" />
+          <label class="login-field">
+            <span class="login-field__label">USUÁRIO</span>
+            <span class="login-field__box">
+              <span class="login-field__icon" aria-hidden="true">
+                <img src="../public/icons_login/user.png" width="18" height="18" alt="" />
+              </span>
+              <input
+                type="text"
+                name="username"
+                id="field-username"
+                placeholder="admin"
+                required
+                autofocus
+              />
+            </span>
+          </label>
+          <label class="login-field">
+            <span class="login-field__label">SENHA</span>
+            <span class="login-field__box">
+              <span class="login-field__icon" aria-hidden="true">
+                <img src="../public/icons_login/senha.png" width="18" height="18" alt="" />
+              </span>
+              <input type="password" name="password" id="field-password" placeholder="admin" required />
+              <button type="button" class="login-field__toggle" id="toggle-password" aria-label="Mostrar senha">
+                <img
+                  id="icon-password-visibility"
+                  src="../public/icons_login/olho-fechado.png"
+                  width="18"
+                  height="18"
+                  alt=""
+                />
+              </button>
+            </span>
+          </label>
+
+          <p id="msg" class="login-msg" hidden></p>
+
+          <div class="login-form__row">
+            <label class="login-remember">
+              <input type="checkbox" name="remember" />
+              Manter conectado
+            </label>
+            <a href="#" class="login-forgot" tabindex="-1">Esqueci a senha</a>
+          </div>
+
+          <button type="submit" class="login-submit btn-login" id="btn-submit">Entrar como Médico</button>
+        </form>
+        </div>
+
+        <p class="login-panel__footer" id="login-app-version"></p>
+      </section>
+    </div>
+    <script src="login.js"></script>
+  </body>
+</html>
