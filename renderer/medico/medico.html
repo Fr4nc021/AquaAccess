@@ -142,6 +142,16 @@
                       />
                       Upload
                     </button>
+                    <button type="button" class="medico-btn medico-btn--outline medico-btn--with-icon" id="btn-open-camera">
+                      <img
+                        class="medico-icon-img medico-icon-img--sm"
+                        src="../public/icons_medico/paciente.png"
+                        width="18"
+                        height="18"
+                        alt=""
+                      />
+                      Câmera
+                    </button>
                     <input type="file" id="input-photo" accept="image/*" hidden />
                   </div>
                 </div>
@@ -179,6 +189,10 @@
                         />
                       </label>
                       <div class="medico-cpf-actions">
+                        <label class="medico-check" for="field-no-cpf">
+                          <input type="checkbox" id="field-no-cpf" name="noCpf" />
+                          <span>Não possui CPF</span>
+                        </label>
                         <button
                           type="button"
                           class="medico-btn medico-btn--outline medico-btn--with-icon medico-btn-validar-exame"
@@ -267,6 +281,13 @@
                     <option value="sem_exame">Sem exame válido</option>
                   </select>
                 </label>
+                <label class="medico-inp medico-overview__filter">
+                  <span class="medico-inp__label">Ordenar por</span>
+                  <select id="overview-sort-order" class="medico-select">
+                    <option value="recentes">Último cadastro</option>
+                    <option value="alfabetica">Ordem alfabética</option>
+                  </select>
+                </label>
               </div>
               <div class="medico-table-scroll medico-table-scroll--overview">
                 <table class="medico-table medico-table--readonly" aria-readonly="true">
@@ -277,6 +298,7 @@
                       <th>Telefone</th>
                       <th>Validade</th>
                       <th>Situação</th>
+                      <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody id="tbody-patients-overview"></tbody>
@@ -354,6 +376,78 @@
         <div class="medico-modal__actions">
           <button type="button" class="medico-btn medico-btn--ghost" id="modal-delete-cancel">Cancelar</button>
           <button type="button" class="medico-btn medico-btn--danger" id="modal-delete-confirm">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-camera-capture" class="medico-modal" hidden role="presentation">
+      <div class="medico-modal__backdrop" id="modal-camera-backdrop" tabindex="-1" aria-hidden="true"></div>
+      <div
+        class="medico-modal__dialog medico-modal__dialog--camera"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-camera-title"
+      >
+        <h2 id="modal-camera-title" class="medico-modal__title">Capturar foto</h2>
+        <p class="medico-modal__text">Posicione o rosto no centro da câmera e tire a foto.</p>
+        <div class="medico-camera-frame">
+          <video id="camera-video" class="medico-camera-frame__video" autoplay playsinline muted></video>
+          <canvas id="camera-canvas" hidden></canvas>
+        </div>
+        <div class="medico-camera-adjust">
+          <label class="medico-inp">
+            <span class="medico-inp__label">Zoom</span>
+            <input type="range" id="camera-zoom" min="1" max="2.5" step="0.01" value="1" />
+          </label>
+          <label class="medico-inp">
+            <span class="medico-inp__label">Ajuste horizontal</span>
+            <input type="range" id="camera-offset-x" min="-100" max="100" step="1" value="0" />
+          </label>
+          <label class="medico-inp">
+            <span class="medico-inp__label">Ajuste vertical</span>
+            <input type="range" id="camera-offset-y" min="-100" max="100" step="1" value="0" />
+          </label>
+        </div>
+        <div class="medico-modal__actions">
+          <button type="button" class="medico-btn medico-btn--ghost" id="modal-camera-cancel">Cancelar</button>
+          <button type="button" class="medico-btn medico-btn--primary" id="modal-camera-capture-btn">Capturar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-photo-adjust" class="medico-modal" hidden role="presentation">
+      <div class="medico-modal__backdrop" id="modal-photo-adjust-backdrop" tabindex="-1" aria-hidden="true"></div>
+      <div
+        class="medico-modal__dialog medico-modal__dialog--camera"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-photo-adjust-title"
+      >
+        <h2 id="modal-photo-adjust-title" class="medico-modal__title">Ajustar foto</h2>
+        <p class="medico-modal__text">Centralize o rosto dentro da área pontilhada antes de salvar.</p>
+        <div class="medico-photo-adjust-stage" id="photo-adjust-stage">
+          <img id="photo-adjust-image" class="medico-photo-adjust-stage__img" alt="Ajuste da foto" />
+          <div class="medico-photo-adjust-stage__guide" aria-hidden="true"></div>
+        </div>
+        <div class="medico-camera-adjust">
+          <label class="medico-inp">
+            <span class="medico-inp__label">Zoom</span>
+            <input type="range" id="photo-adjust-zoom" min="1" max="2.5" step="0.01" value="1" />
+          </label>
+          <label class="medico-inp">
+            <span class="medico-inp__label">Ajuste horizontal</span>
+            <input type="range" id="photo-adjust-offset-x" min="-100" max="100" step="1" value="0" />
+          </label>
+          <label class="medico-inp">
+            <span class="medico-inp__label">Ajuste vertical</span>
+            <input type="range" id="photo-adjust-offset-y" min="-100" max="100" step="1" value="0" />
+          </label>
+        </div>
+        <div class="medico-modal__actions">
+          <button type="button" class="medico-btn medico-btn--ghost" id="modal-photo-adjust-cancel">Cancelar</button>
+          <button type="button" class="medico-btn medico-btn--primary" id="modal-photo-adjust-save">
+            Salvar foto
+          </button>
         </div>
       </div>
     </div>

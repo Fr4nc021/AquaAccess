@@ -20,6 +20,7 @@
   const form = document.getElementById('form-patient');
   const msg = document.getElementById('patient-msg');
   const fieldCpf = document.getElementById('field-cpf');
+  const fieldNoCpf = document.getElementById('field-no-cpf');
   const fieldPhone = document.getElementById('field-phone');
   const fieldFullname = document.getElementById('field-fullname');
   const fieldPatientId = document.getElementById('field-patient-id');
@@ -27,6 +28,7 @@
   const photoPlaceholder = document.getElementById('photo-placeholder');
   const inputPhoto = document.getElementById('input-photo');
   const btnPickFile = document.getElementById('btn-pick-file');
+  const btnOpenCamera = document.getElementById('btn-open-camera');
   const btnReset = document.getElementById('btn-reset-patient');
   const btnValidarExame = document.getElementById('btn-validar-exame');
   const sidebarName = document.getElementById('sidebar-user-name');
@@ -37,6 +39,7 @@
   const tbodyPatientsOverview = document.getElementById('tbody-patients-overview');
   const overviewEmpty = document.getElementById('overview-empty');
   const overviewFilterAttention = document.getElementById('overview-filter-attention');
+  const overviewSortOrder = document.getElementById('overview-sort-order');
   const topbarSearch = document.getElementById('topbar-search');
   const tbodyExamsDone = document.getElementById('tbody-exams-done');
   const examsDoneEmpty = document.getElementById('exams-done-empty');
@@ -45,6 +48,26 @@
   const modalDeleteBackdrop = document.getElementById('modal-delete-backdrop');
   const modalDeleteCancel = document.getElementById('modal-delete-cancel');
   const modalDeleteConfirm = document.getElementById('modal-delete-confirm');
+  const modalCamera = document.getElementById('modal-camera-capture');
+  const modalCameraBackdrop = document.getElementById('modal-camera-backdrop');
+  const modalCameraCancel = document.getElementById('modal-camera-cancel');
+  const modalCameraCaptureBtn = document.getElementById('modal-camera-capture-btn');
+  const modalCameraTitle = document.getElementById('modal-camera-title');
+  const cameraVideo = document.getElementById('camera-video');
+  const cameraCanvas = document.getElementById('camera-canvas');
+  const cameraZoom = document.getElementById('camera-zoom');
+  const cameraOffsetX = document.getElementById('camera-offset-x');
+  const cameraOffsetY = document.getElementById('camera-offset-y');
+  const modalPhotoAdjust = document.getElementById('modal-photo-adjust');
+  const modalPhotoAdjustBackdrop = document.getElementById('modal-photo-adjust-backdrop');
+  const modalPhotoAdjustCancel = document.getElementById('modal-photo-adjust-cancel');
+  const modalPhotoAdjustSave = document.getElementById('modal-photo-adjust-save');
+  const photoAdjustStage = document.getElementById('photo-adjust-stage');
+  const photoAdjustImage = document.getElementById('photo-adjust-image');
+  const photoAdjustZoom = document.getElementById('photo-adjust-zoom');
+  const photoAdjustOffsetX = document.getElementById('photo-adjust-offset-x');
+  const photoAdjustOffsetY = document.getElementById('photo-adjust-offset-y');
+  let cameraStream = null;
 
   function bindConfirmModal(modal, backdrop, cancelBtn, confirmBtn) {
     return function openConfirmModal() {
@@ -156,7 +179,7 @@
     return typeof s === 'string' && /^data:image\/(png|jpeg|jpg|webp);base64,.+/i.test(s);
   }
 
-  /** Novo cadastro: só aceita upload. Edição: upload novo ou foto já salva no disco. */
+  /** Novo cadastro: aceita upload ou captura da câmera. */
   function hasPhotoForSubmit(patientId) {
     if (isValidPhotoDataUrl(photoPendingBase64)) return true;
     if (patientId > 0 && !photoPreview.hidden && photoPreview.getAttribute('src')) return true;
@@ -175,6 +198,222 @@
     photoPreview.src = dataUrl;
     photoPreview.hidden = false;
     photoPlaceholder.hidden = true;
+  }
+
+  function stopCameraStream() {
+    if (!cameraStream) return;
+    for (const track of cameraStream.getTracks()) {
+      track.stop();
+    }
+    cameraStream = null;
+    if (cameraVideo) cameraVideo.srcObject = null;
+  }
+
+  async function captureFrameFromVideo(videoEl) {
+    const srcW = videoEl.videoWidth || 640;
+    const srcH = videoEl.videoHeight || 480;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = srcW;
+    tempCanvas.height = srcH;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) throw new Error('Falha ao processar imagem da câmera.');
+    tempCtx.drawImage(videoEl, 0, 0, srcW, srcH);
+    return tempCanvas.toDataURL('image/jpeg', 0.95);
+  }
+
+  function loadImage(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  function updatePhotoAdjustPreview() {
+    if (!photoAdjustStage) return;
+    const zoom = Math.max(1, Number(photoAdjustZoom?.value || 1));
+    const offsetX = Number(photoAdjustOffsetX?.value || 0);
+    const offsetY = Number(photoAdjustOffsetY?.value || 0);
+    photoAdjustStage.style.setProperty('--photo-adjust-zoom', String(zoom));
+    photoAdjustStage.style.setProperty('--photo-adjust-x', `${offsetX}%`);
+    photoAdjustStage.style.setProperty('--photo-adjust-y', `${offsetY}%`);
+  }
+
+  async function cropAdjustedPhoto(dataUrl) {
+    const img = await loadImage(dataUrl);
+    const stageRect = photoAdjustStage?.getBoundingClientRect();
+    const stageW = stageRect?.width || 420;
+    const stageH = stageRect?.height || 420;
+    const zoom = Math.max(1, Number(photoAdjustZoom?.value || 1));
+    const offsetX = Number(photoAdjustOffsetX?.value || 0) / 100;
+    const offsetY = Number(photoAdjustOffsetY?.value || 0) / 100;
+
+    const baseScale = Math.min(stageW / img.naturalWidth, stageH / img.naturalHeight);
+    const renderedW = img.naturalWidth * baseScale * zoom;
+    const renderedH = img.naturalHeight * baseScale * zoom;
+    const centerX = stageW / 2 + offsetX * stageW;
+    const centerY = stageH / 2 + offsetY * stageH;
+    const left = centerX - renderedW / 2;
+    const top = centerY - renderedH / 2;
+
+    const guideInset = stageW * 0.12;
+    const guideSide = stageW - guideInset * 2;
+    const sx = (guideInset - left) / (baseScale * zoom);
+    const sy = (guideInset - top) / (baseScale * zoom);
+    const sSide = guideSide / (baseScale * zoom);
+
+    const cropX = Math.max(0, Math.min(sx, img.naturalWidth - 1));
+    const cropY = Math.max(0, Math.min(sy, img.naturalHeight - 1));
+    const cropW = Math.max(1, Math.min(sSide, img.naturalWidth - cropX));
+    const cropH = Math.max(1, Math.min(sSide, img.naturalHeight - cropY));
+
+    const out = document.createElement('canvas');
+    out.width = 640;
+    out.height = 640;
+    const outCtx = out.getContext('2d');
+    if (!outCtx) throw new Error('Falha ao finalizar ajuste da foto.');
+    outCtx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, out.width, out.height);
+    return out.toDataURL('image/jpeg', 0.92);
+  }
+
+  async function openPhotoAdjustDialog(dataUrl) {
+    if (
+      !modalPhotoAdjust ||
+      !photoAdjustImage ||
+      !modalPhotoAdjustSave ||
+      !modalPhotoAdjustCancel ||
+      !photoAdjustZoom ||
+      !photoAdjustOffsetX ||
+      !photoAdjustOffsetY
+    ) {
+      return dataUrl;
+    }
+
+    photoAdjustImage.src = dataUrl;
+    photoAdjustZoom.value = '1';
+    photoAdjustOffsetX.value = '0';
+    photoAdjustOffsetY.value = '0';
+    updatePhotoAdjustPreview();
+    modalPhotoAdjust.hidden = false;
+    document.body.classList.add('medico-modal-open');
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        modalPhotoAdjust.hidden = true;
+        photoAdjustImage.removeAttribute('src');
+        document.body.classList.remove('medico-modal-open');
+        modalPhotoAdjustBackdrop?.removeEventListener('click', onCancel);
+        modalPhotoAdjustCancel.removeEventListener('click', onCancel);
+        modalPhotoAdjustSave.removeEventListener('click', onSave);
+        photoAdjustZoom.removeEventListener('input', onAdjust);
+        photoAdjustOffsetX.removeEventListener('input', onAdjust);
+        photoAdjustOffsetY.removeEventListener('input', onAdjust);
+        document.removeEventListener('keydown', onKey);
+        resolve(value);
+      };
+      const onAdjust = () => updatePhotoAdjustPreview();
+      const onCancel = () => finish(null);
+      const onKey = (e) => {
+        if (e.key === 'Escape') finish(null);
+      };
+      const onSave = async () => {
+        modalPhotoAdjustSave.disabled = true;
+        try {
+          const adjusted = await cropAdjustedPhoto(dataUrl);
+          finish(adjusted);
+        } catch {
+          finish(null);
+        } finally {
+          modalPhotoAdjustSave.disabled = false;
+        }
+      };
+
+      modalPhotoAdjustBackdrop?.addEventListener('click', onCancel);
+      modalPhotoAdjustCancel.addEventListener('click', onCancel);
+      modalPhotoAdjustSave.addEventListener('click', onSave);
+      photoAdjustZoom.addEventListener('input', onAdjust);
+      photoAdjustOffsetX.addEventListener('input', onAdjust);
+      photoAdjustOffsetY.addEventListener('input', onAdjust);
+      document.addEventListener('keydown', onKey);
+      modalPhotoAdjustSave.focus();
+    });
+  }
+
+  async function openCameraCaptureDialog(titleText) {
+    if (!modalCamera || !cameraVideo || !modalCameraCaptureBtn) return null;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Câmera não suportada neste dispositivo.');
+    }
+    modalCameraTitle.textContent = titleText || 'Capturar foto';
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user' },
+      audio: false,
+    });
+    if (cameraZoom) cameraZoom.value = '1';
+    if (cameraOffsetX) cameraOffsetX.value = '0';
+    if (cameraOffsetY) cameraOffsetY.value = '0';
+    cameraVideo.srcObject = cameraStream;
+    await cameraVideo.play();
+    modalCamera.hidden = false;
+    document.body.classList.add('medico-modal-open');
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        modalCamera.hidden = true;
+        document.body.classList.remove('medico-modal-open');
+        modalCameraBackdrop?.removeEventListener('click', onCancel);
+        modalCameraCancel?.removeEventListener('click', onCancel);
+        modalCameraCaptureBtn.removeEventListener('click', onCapture);
+        document.removeEventListener('keydown', onKey);
+        stopCameraStream();
+        resolve(value);
+      };
+      const onCancel = () => finish(null);
+      const onKey = (e) => {
+        if (e.key === 'Escape') finish(null);
+      };
+      const onCapture = async () => {
+        modalCameraCaptureBtn.disabled = true;
+        try {
+          const dataUrl = await captureFrameFromVideo(cameraVideo);
+          finish(dataUrl);
+        } catch {
+          finish(null);
+        } finally {
+          modalCameraCaptureBtn.disabled = false;
+        }
+      };
+      modalCameraBackdrop?.addEventListener('click', onCancel);
+      modalCameraCancel?.addEventListener('click', onCancel);
+      modalCameraCaptureBtn.addEventListener('click', onCapture);
+      document.addEventListener('keydown', onKey);
+      modalCameraCaptureBtn.focus();
+    });
+  }
+
+  async function detectFaceInDataUrl(dataUrl) {
+    if (!dataUrl) return false;
+    if (typeof window.FaceDetector !== 'function') return true;
+    try {
+      const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+      const faces = await detector.detect(img);
+      return Array.isArray(faces) && faces.length > 0;
+    } catch {
+      return true;
+    }
   }
 
   async function showPhotoFromDisk(relativePath) {
@@ -197,7 +436,12 @@
     if (!row || row.id == null) return;
     fieldPatientId.value = String(row.id);
     fieldFullname.value = row.full_name || '';
-    fieldCpf.value = formatCpfMask(row.cpf || '');
+    const cpfDigits = formatCpfDigits(row.cpf || '');
+    if (fieldNoCpf) {
+      fieldNoCpf.checked = !cpfDigits;
+    }
+    fieldCpf.value = formatCpfMask(cpfDigits);
+    syncCpfInputState();
     fieldPhone.value = formatPhoneBR(row.phone || '');
     await showPhotoFromDisk(row.photo_path || '');
     hideSuggest();
@@ -280,6 +524,21 @@
     e.target.value = formatCpfMask(e.target.value);
   });
 
+  function syncCpfInputState() {
+    if (!fieldCpf) return;
+    const noCpf = Boolean(fieldNoCpf?.checked);
+    fieldCpf.required = !noCpf;
+    fieldCpf.disabled = noCpf;
+    if (noCpf) {
+      fieldCpf.value = '';
+      fieldCpf.removeAttribute('aria-invalid');
+    }
+  }
+
+  fieldNoCpf?.addEventListener('change', () => {
+    syncCpfInputState();
+  });
+
   fieldPhone.addEventListener('input', (e) => {
     e.target.value = formatPhoneBR(e.target.value);
   });
@@ -311,6 +570,32 @@
 
   btnPickFile.addEventListener('click', () => inputPhoto.click());
 
+  btnOpenCamera?.addEventListener('click', async () => {
+    msg.hidden = true;
+    msg.classList.remove('medico-msg--err', 'medico-msg--ok', 'medico-msg--banner');
+    try {
+      const capturedRaw = await openCameraCaptureDialog('Capturar foto do paciente');
+      if (!capturedRaw) return;
+      const captured = await openPhotoAdjustDialog(capturedRaw);
+      if (!captured) return;
+      const hasFace = await detectFaceInDataUrl(captured);
+      if (!hasFace) {
+        msg.textContent = 'Não detectamos um rosto. Ajuste e tente novamente.';
+        msg.classList.add('medico-msg--err');
+        msg.hidden = false;
+        return;
+      }
+      setPhotoFromUpload(captured);
+      msg.textContent = 'Foto capturada com sucesso.';
+      msg.classList.add('medico-msg--ok');
+      msg.hidden = false;
+    } catch (err) {
+      msg.textContent = err?.message || 'Não foi possível acessar a câmera.';
+      msg.classList.add('medico-msg--err');
+      msg.hidden = false;
+    }
+  });
+
   inputPhoto.addEventListener('change', () => {
     const file = inputPhoto.files && inputPhoto.files[0];
     if (!file || !file.type.startsWith('image/')) return;
@@ -331,7 +616,8 @@
   async function savePatientFromForm() {
     const fd = new FormData(form);
     const fullName = fd.get('fullName');
-    const cpf = formatCpfDigits(fd.get('cpf'));
+    const noCpf = fd.get('noCpf') === 'on';
+    const cpf = noCpf ? '' : formatCpfDigits(fd.get('cpf'));
     const phone = fd.get('phone');
     const rawId = fd.get('patientId');
     const patientId = rawId ? Number(rawId) : 0;
@@ -341,17 +627,22 @@
       return { ok: false, error: 'Informe o telefone completo (DDD + número).' };
     }
     if (!hasPhotoForSubmit(patientId)) {
-      return { ok: false, error: 'É obrigatório enviar a foto do paciente (Upload).' };
+      return { ok: false, error: 'É obrigatório enviar a foto do paciente (Upload ou Câmera).' };
+    }
+    if (!noCpf && cpf.length !== 11) {
+      return { ok: false, error: 'Informe um CPF válido com 11 dígitos.' };
     }
 
     if (patientId <= 0) {
-      const dupId = await window.clubAccess.patientsLookupCpf(cpf);
-      if (dupId != null) {
-        return {
-          ok: false,
-          error:
-            'Este CPF já está cadastrado. Use a busca pelo nome para editar o paciente.',
-        };
+      if (!noCpf) {
+        const dupId = await window.clubAccess.patientsLookupCpf(cpf);
+        if (dupId != null) {
+          return {
+            ok: false,
+            error:
+              'Este CPF já está cadastrado. Use a busca pelo nome para editar o paciente.',
+          };
+        }
       }
       const result = await window.clubAccess.patientsCreate({
         fullName,
@@ -461,6 +752,10 @@
     const { keepMessage = false } = options;
     form.reset();
     fieldPatientId.value = '';
+    if (fieldNoCpf) {
+      fieldNoCpf.checked = false;
+    }
+    syncCpfInputState();
     clearPhotoUi();
     hideSuggest();
     if (!keepMessage) {
@@ -501,7 +796,8 @@
 
     const fd = new FormData(form);
     const fullName = fd.get('fullName');
-    const cpf = formatCpfDigits(fd.get('cpf'));
+    const noCpf = fd.get('noCpf') === 'on';
+    const cpf = noCpf ? '' : formatCpfDigits(fd.get('cpf'));
     const phone = fd.get('phone');
     const rawId = fd.get('patientId');
     const hadPatientId = rawId ? Number(rawId) > 0 : false;
@@ -554,11 +850,23 @@
       });
     }
 
-    filtered.sort((a, b) =>
-      String(a.full_name || '').localeCompare(String(b.full_name || ''), 'pt', {
-        sensitivity: 'base',
-      })
-    );
+    const sortOrder = String(overviewSortOrder?.value || 'recentes');
+    if (sortOrder === 'alfabetica') {
+      filtered.sort((a, b) =>
+        String(a.full_name || '').localeCompare(String(b.full_name || ''), 'pt', {
+          sensitivity: 'base',
+        })
+      );
+    } else {
+      filtered.sort((a, b) => {
+        const da = Date.parse(String(a.created_at || ''));
+        const dbv = Date.parse(String(b.created_at || ''));
+        if (!Number.isNaN(da) && !Number.isNaN(dbv) && da !== dbv) {
+          return dbv - da;
+        }
+        return Number(b.id || 0) - Number(a.id || 0);
+      });
+    }
 
     tbodyPatientsOverview.innerHTML = '';
     if (!filtered.length) {
@@ -582,9 +890,38 @@
         <td>${escapeHtml(formatPhoneBR(r.phone || ''))}</td>
         <td>${escapeHtml(fmtDateBR(r.valid_until))}</td>
         <td><span class="${meta.pillClass}">${escapeHtml(meta.label)}</span></td>
+        <td class="medico-table__cell-actions">
+          <button
+            type="button"
+            class="medico-btn medico-btn--outline medico-table__validate-btn"
+            data-action="overview-validate-exam"
+            data-patient-id="${escapeHtml(String(r.id || ''))}"
+          >
+            Validar exame
+          </button>
+        </td>
       `;
       tbodyPatientsOverview.appendChild(tr);
     }
+  }
+
+  async function validateExamFromOverview(patientId) {
+    const pid = Number(patientId || 0);
+    if (!Number.isFinite(pid) || pid <= 0) return;
+    msg.hidden = true;
+    msg.classList.remove('medico-msg--err', 'medico-msg--ok', 'medico-msg--banner');
+    const res = await window.clubAccess.examsRegister({ patientId: pid });
+    if (res.ok) {
+      msg.textContent = `Exame registrado. Validade de 30 dias — até ${fmtDateBR(res.validUntil)}.`;
+      msg.classList.add('medico-msg--ok');
+      msg.hidden = false;
+      void refreshPatientsOverview();
+      void refreshExamsList();
+      return;
+    }
+    msg.textContent = res.error || 'Não foi possível validar exame.';
+    msg.classList.add('medico-msg--err');
+    msg.hidden = false;
   }
 
   async function refreshPatientsOverview() {
@@ -710,6 +1047,16 @@
   overviewFilterAttention?.addEventListener('change', () => {
     renderPatientsOverview();
   });
+  overviewSortOrder?.addEventListener('change', () => {
+    renderPatientsOverview();
+  });
+
+  tbodyPatientsOverview?.addEventListener('click', (e) => {
+    const target = e.target instanceof Element ? e.target.closest('[data-action="overview-validate-exam"]') : null;
+    if (!target) return;
+    const patientId = target.getAttribute('data-patient-id');
+    void validateExamFromOverview(patientId);
+  });
 
   topbarSearch?.addEventListener('input', () => {
     if (activeNavPage === 'exames') {
@@ -720,6 +1067,7 @@
   });
 
   hideSuggest();
+  syncCpfInputState();
   syncPatientFormChrome();
   syncTopbarPlaceholder('pacientes');
   void refreshPatientsOverview();

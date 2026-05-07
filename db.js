@@ -351,6 +351,27 @@ function normalizeCpf(cpf) {
   return String(cpf || '').replace(/\D/g, '');
 }
 
+function makeNoCpfMarker() {
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  let suffix = '';
+  for (let i = 0; i < 18; i += 1) {
+    suffix += letters[Math.floor(Math.random() * letters.length)];
+  }
+  return `NOCPF:${suffix}`;
+}
+
+function buildUniqueNoCpfMarker() {
+  for (let i = 0; i < 10; i += 1) {
+    const marker = makeNoCpfMarker();
+    const stmt = db.prepare('SELECT id FROM patients WHERE cpf = ? LIMIT 1');
+    stmt.bind([marker]);
+    const exists = stmt.step();
+    stmt.free();
+    if (!exists) return marker;
+  }
+  return `NOCPF:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function normalizePhoneDigits(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
@@ -362,24 +383,27 @@ function isPhoneComplete(phoneDigits) {
 }
 
 function createPatient(fullName, cpf, phone) {
+  const cpfRaw = String(cpf || '').trim();
   const cpfDigits = normalizeCpf(cpf);
+  const noCpf = !cpfRaw || cpfDigits.length === 0;
   const phoneDigits = normalizePhoneDigits(phone);
   if (!fullName || !String(fullName).trim()) {
     return { ok: false, error: 'Informe o nome completo.' };
   }
-  if (cpfDigits.length !== 11) {
+  if (!noCpf && cpfDigits.length !== 11) {
     return { ok: false, error: 'CPF deve ter 11 dígitos.' };
   }
   if (!isPhoneComplete(phoneDigits)) {
     return { ok: false, error: 'Informe o telefone completo (DDD + número).' };
   }
-  if (findPatientIdByCpf(cpfDigits) !== null) {
+  if (!noCpf && findPatientIdByCpf(cpfDigits) !== null) {
     return { ok: false, error: 'Este CPF já está cadastrado.' };
   }
+  const cpfToStore = noCpf ? buildUniqueNoCpfMarker() : cpfDigits;
   try {
     db.run('INSERT INTO patients (full_name, cpf, phone) VALUES (?, ?, ?)', [
       String(fullName).trim(),
-      cpfDigits,
+      cpfToStore,
       phoneDigits,
     ]);
     const idStmt = db.prepare('SELECT last_insert_rowid() AS id');
@@ -474,25 +498,28 @@ function updatePatient(id, fullName, cpf, phone) {
   if (!Number.isFinite(pid) || pid <= 0) {
     return { ok: false, error: 'Paciente inválido.' };
   }
+  const cpfRaw = String(cpf || '').trim();
   const cpfDigits = normalizeCpf(cpf);
+  const noCpf = !cpfRaw || cpfDigits.length === 0;
   const phoneDigits = normalizePhoneDigits(phone);
   if (!fullName || !String(fullName).trim()) {
     return { ok: false, error: 'Informe o nome completo.' };
   }
-  if (cpfDigits.length !== 11) {
+  if (!noCpf && cpfDigits.length !== 11) {
     return { ok: false, error: 'CPF deve ter 11 dígitos.' };
   }
   if (!isPhoneComplete(phoneDigits)) {
     return { ok: false, error: 'Informe o telefone completo (DDD + número).' };
   }
-  const cpfOwnerId = findPatientIdByCpf(cpfDigits);
-  if (cpfOwnerId !== null && cpfOwnerId !== pid) {
+  const cpfOwnerId = !noCpf ? findPatientIdByCpf(cpfDigits) : null;
+  if (!noCpf && cpfOwnerId !== null && cpfOwnerId !== pid) {
     return { ok: false, error: 'Este CPF já pertence a outro paciente.' };
   }
+  const cpfToStore = noCpf ? buildUniqueNoCpfMarker() : cpfDigits;
   try {
     db.run('UPDATE patients SET full_name = ?, cpf = ?, phone = ? WHERE id = ?', [
       String(fullName).trim(),
-      cpfDigits,
+      cpfToStore,
       phoneDigits,
       pid,
     ]);
@@ -603,6 +630,7 @@ function listPatientsOverview() {
       cpf: p.cpf,
       phone: p.phone,
       photo_path: p.photo_path,
+      created_at: p.created_at,
       valid_until: validUntil,
       attention,
       blocked: Boolean(Number(p.blocked)),
