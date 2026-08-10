@@ -1,6 +1,6 @@
 # AquaAccess (facial)
 
-Aplicação desktop **offline-first** para **controle de acesso às piscinas do clube**, com cadastro de associados, validação de exames médicos e integração com **reconhecimento facial Intelbras**.
+Aplicação desktop **offline-first** para **controle de acesso às piscinas do clube**, com cadastro de associados, validação de exames médicos e integração em rede com o **videoporteiro Intelbras XPE 3200 PLUS IP** (HTTP: bridge de eventos + exportação de fotos/manifesto).
 
 ## Stack
 
@@ -8,81 +8,145 @@ Aplicação desktop **offline-first** para **controle de acesso às piscinas do 
 - **sql.js** — banco SQLite local
 - **bcryptjs** — autenticação de usuários
 
-## Como executar
+---
+
+## Como baixar e executar o app
+
+### Opção A — Desenvolvimento (código-fonte)
+
+1. Instale [Node.js](https://nodejs.org/) (LTS recomendado).
+2. No terminal, na pasta do projeto:
 
 ```bash
 npm install
 npm start
 ```
 
-A janela abre em `renderer/login/login.html`.
+3. A janela abre no login. Credenciais padrão do banco local:
+   - **Administrador:** usuário `admin`, senha `admin`
+   - **Médico:** usuário `medico`, senha `admin`  
+   Altere as senhas após o primeiro uso em produção.
+
+### Opção B — Instalador Windows (produção)
+
+1. Gere o instalador na pasta `release/`:
+
+```bash
+npm install
+npm run dist
+```
+
+2. Execute o arquivo gerado (ex.: `release/AquaAccess Facial Setup 1.0.0.exe`) e siga o assistente.
+3. Abra o **AquaAccess Facial** pelo atalho do menu Iniciar ou da área de trabalho.
+
+### Onde ficam os dados (importante para backup)
+
+No Windows, o Electron guarda dados de usuário em uma pasta do tipo:
+
+`%APPDATA%\AquaAccess Facial\`  
+(ou nome semelhante conforme `productName` no `package.json`)
+
+Lá ficam, entre outros:
+
+| Arquivo / pasta | Conteúdo |
+|-----------------|----------|
+| `club-piscinas.db` | Banco SQLite (pacientes, exames, acessos) |
+| `patient-photos/` | Fotos dos pacientes |
+| `xpe-bridge-settings.json` | Configuração do bridge HTTP |
+| `xpe-bridge-inbound.ndjson` | **Log bruto** das requisições enviadas pelo XPE (uma linha JSON por evento) |
+| `xpe-export/` | Pastas geradas por **Dispositivo facial → Sincronizar** |
+
+Faça backup dessa pasta se precisar migrar de PC ou reinstalar.
+
+---
+
+## O que configurar para funcionar bem com o XPE 3200 PLUS IP
+
+### 1. Geral (Configurações)
+
+- **Nome do clube** e **nome do sistema** — textos exibidos na interface.
+- **Validade padrão do exame (dias)** e **dias da semana para exames** — usados ao registrar exames.
+- **Bloquear exames vencidos** — alinhado às regras de liberação no controle de acessos.
+
+### 2. Videoporteiro Intelbras (IP e porta)
+
+- **IP do dispositivo** — IPv4 com pontos (ex.: `192.168.0.67`).
+- **Porta** — em geral **80** para a interface web HTTP do XPE (confira no manual / no aparelho).
+
+Serve para o **teste TCP** (“Conectar” / cartão na visão geral). Não substitui o cadastro facial no próprio equipamento.
+
+### 3. Bridge HTTP (Log de acesso do XPE → PC)
+
+O XPE envia eventos por **HTTP** (manual: **Ações URL** → **Log de Acesso**). O AquaAccess escuta na **rede local** na porta que você definir (padrão sugerido: **37891**).
+
+**Forma mais fácil:** em **Configurações → Assistente Intelbras**, cole a URL do painel do equipamento (ex.: `http://192.168.0.67`) e clique em **Detectar e configurar**. O app detecta o IP deste PC, testa o XPE, liga o bridge e mostra a URL pronta para copiar em **Log de Acesso**.
+
+- Ative **Receber eventos de acesso na rede local** (o assistente faz isso automaticamente).
+- Defina **porta** e **path** (padrão do app: `/intelbras/xpe`).
+- No XPE, configure a URL apontando para o **IP do computador onde o AquaAccess está em execução**, por exemplo:  
+  `http://192.168.0.10:37891/intelbras/xpe?userId=123`  
+  O valor `userId` deve ser o **ID do paciente** no AquaAccess (o mesmo número usado como **ID Usuário** no cadastro do XPE) **ou** envie `cpf` com **11 dígitos** se preferir identificar por CPF.
+- **Token opcional** — se preencher, o XPE deve enviar o cabeçalho `X-AquaAccess-Token` com o mesmo valor (conforme permitir a configuração do equipamento).
+- **Gravar log bruto das requisições** — recomendado ligado no início: cada tentativa vira uma linha em `xpe-bridge-inbound.ndjson`. Use **Abrir log no editor** em Configurações para ver exatamente o que o XPE mandou e ajustar a URL/corpo se necessário.
+- **Firewall do Windows** — na primeira vez, autorize o AquaAccess a receber conexões **privadas** na rede quando o Windows perguntar. Sem isso, o XPE não alcança o PC.
+
+### 4. OpenDoor pelo PC (opcional)
+
+Só ative **Chamar OpenDoor via HTTP** se o seu cenário exigir acionar o relé **depois** da validação no app (veja o manual do XPE para `/fcgi/do?action=OpenDoor&...`). Preencha URL base (ex.: `http://192.168.0.67`), usuário e senha web do XPE.
+
+### 5. Fotos e cadastro no XPE
+
+1. No admin: **Dispositivo facial → Sincronizar** — gera pasta com `patient-<id>.*`, CSV e `LEIA-ME.txt`.
+2. No **XPE**, cadastre usuários com **ID Usuário** igual ao **ID do paciente** no AquaAccess e associe a foto (interface web / display, conforme manual).
+
+### 6. Automação Playwright (painel web do XPE)
+
+Automação opcional do cadastro no painel web (sem API oficial). Requer Chromium do Playwright instalado na máquina:
+
+```bash
+npm install
+npm run xpe:install-browser
+npm run xpe:test
+```
+
+- **Teste isolado:** `npm run xpe:test` abre `http://<IP>` (defaults em `xpeAutomation/config.js`).
+- **No app:** **Dispositivo facial → Sincronizar Intelbras** (informa ID do paciente) ou ícone de sync na lista **Pacientes**.
+- Credenciais: IP/porta das **Configurações**; usuário/senha web do **bridge OpenDoor** (ou fallback em `xpeAutomation/config.js`).
+- Ajuste seletores em `xpeAutomation/selectors.js` após inspecionar o HTML do seu firmware.
+- Erros geram screenshots em `%APPDATA%\AquaAccess Facial\xpe-automation-errors\`.
+
+**Build instalador:** o pacote npm inclui o módulo `xpeAutomation/`, mas os browsers do Playwright (~300 MB) não vêm no `.exe` — rode `npm run xpe:install-browser` no PC de destino após instalar.
+
+---
 
 ## Perfis de acesso
 
 | Perfil | Após o login |
 |--------|----------------|
 | **Médico** | `renderer/medico/medico.html` |
-| **Administrador** | `renderer/admin/home.html` (telas injetadas a partir de `renderer/admin/views/`) |
+| **Administrador** | `renderer/admin/home.html` (telas em `renderer/admin/views/`) |
 
-O login permite escolher o tipo de acesso (aba Médico / Administrador) e valida credenciais contra o banco local.
+---
 
-## Funcionalidades principais (visão de produto)
+## Funcionalidades principais
 
 - **Cadastro e gestão de pacientes** — nome, CPF, telefone e foto; busca e filtros por situação do exame.
-- **Exames médicos** — registro com validade configurável (padrão em dias nas configurações); histórico de exames realizados.
-- **Controle de acessos** — acompanhamento de eventos na entrada (liberados / negados), com indicadores do dia.
-- **Dispositivo facial** — status de conexão, métricas de sincronização e ações enviadas ao leitor (IP/porta definidos em Configurações).
-- **Relatórios** — período customizável, atalhos “esta semana / este mês”, exportação para **PDF** (impressão) e **Excel/CSV**.
-- **Sincronização** — visão do banco local, nuvem (Supabase) e pendências; ação de sincronizar tudo.
-- **Configurações** — nome do clube e do sistema, validade padrão de exame, parâmetros do dispositivo Intelbras, opções de auto-sync, bloqueio de vencidos e preferências de notificação.
+- **Exames médicos** — validade configurável; histórico.
+- **Controle de acessos** — eventos liberados/negados (incluindo eventos vindos do bridge XPE).
+- **Dispositivo facial** — teste TCP ao XPE; exportação para cadastro no aparelho; status do bridge HTTP.
+- **Relatórios** — PDF (impressão) e Excel/CSV.
+- **Sincronização** — visão local/nuvem (nuvem ainda placeholder conforme tela).
+- **Configurações** — geral, XPE, bridge HTTP, notificações.
 
-> Parte da interface administrativa (por exemplo, gráficos na visão geral) pode usar valores de exemplo no HTML; os dados operacionais vêm do banco e dos handlers em `main.js` / `db.js`.
-
-## Telas criadas até o momento
-
-### Autenticação
-
-| Tela | Arquivo | Conteúdo resumido |
-|------|---------|-------------------|
-| Login | `renderer/login/login.html` | Identidade visual AquaAccess, abas Médico/Administrador, formulário usuário/senha, lembrar conexão |
-
-### Painel médico
-
-| Tela | Arquivo | Conteúdo resumido |
-|------|---------|-------------------|
-| Shell + Pacientes | `renderer/medico/medico.html` | Sidebar, busca no topo, formulário “Incluir novo paciente” (foto, dados, validar exame), tabela somente leitura de pacientes com filtro de atenção |
-| Exames feitos | Mesmo arquivo (`#view-exames`) | Tabela somente leitura de exames realizados; navegação por aba no menu lateral |
-| Modal excluir paciente | Mesmo arquivo | Confirmação antes de remover cadastro |
-
-### Painel administrativo
-
-O layout base e o menu estão em `renderer/admin/home.html`. O conteúdo de cada seção é carregado dinamicamente a partir dos fragmentos abaixo (`admin-views-loader.js`).
-
-| Tela / módulo | Arquivo | Conteúdo resumido |
-|---------------|---------|-------------------|
-| Visão geral | `renderer/admin/views/visao-geral.html` | Cards de resumo (pacientes, exames, acessos, sistema, dispositivo), gráfico de exames por mês, distribuição por status; **tela inicial** do admin (marca no sidebar também volta para esta visão) |
-| Pacientes | `renderer/admin/views/pacientes.html` | Busca, filtros (todos, válido, vencendo, vencido, bloqueado), tabela com ações; modais de edição, confirmação e alerta |
-| Controle de acessos | `renderer/admin/views/controle-acessos.html` | Totais do dia (liberados/negados), lista de eventos recentes em tempo real |
-| Dispositivo facial | `renderer/admin/views/dispositivo-facial.html` | Resumo do leitor, status, métricas e painel de ações |
-| Relatórios | `renderer/admin/views/relatorios.html` | Filtros de período, export PDF/Excel, foco em exames vencendo e contato |
-| Sincronização | `renderer/admin/views/sincronizacao.html` | Status local/nuvem/pendências e botão sincronizar tudo |
-| Exames realizados | `renderer/admin/views/exames.html` | Tabela histórica com ações administrativas |
-| Configurações | `renderer/admin/views/configuracoes.html` | Formulário: geral, Intelbras, notificações e demais parâmetros |
-
-### Estilos e recursos compartilhados
-
-- `renderer/shared/base.css` — estilos base
-- `renderer/public/` — logos e ícones usados nas telas
+---
 
 ## Estrutura útil do projeto
 
 ```
-main.js, preload.js, db.js   → processo principal, ponte segura renderer↔main, persistência
-renderer/login/              → login
-renderer/medico/             → fluxo médico
-renderer/admin/            → shell admin + views + admin.js
+main.js, preload.js, db.js, xpeBridge.js, xpeAutomation/  → processo principal, bridge HTTP, automação XPE
+renderer/login/                           → login
+renderer/medico/                        → fluxo médico
+renderer/admin/                         → shell admin + views + admin.js
 ```
 
----
-
-Versão declarada em `package.json`: **1.0.0**.
+Versão em `package.json`: **1.0.0**.

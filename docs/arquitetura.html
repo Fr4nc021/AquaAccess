@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AquaAccess Facial — Documentação de Arquitetura</title>
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #5a6577;
+      --line: #d8dee8;
+      --accent: #0b6e99;
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --code-bg: #eef2f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .page {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 48px 40px 64px;
+      background: var(--card);
+      box-shadow: 0 0 0 1px var(--line);
+    }
+
+    header.doc-header {
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+    }
+
+    header.doc-header .eyebrow {
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 0 0 8px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin: 0;
+    }
+
+    .meta span + span::before {
+      content: "·";
+      margin: 0 0.45em;
+      opacity: 0.6;
+    }
+
+    h2 {
+      margin: 2rem 0 0.75rem;
+      font-size: 1.2rem;
+      color: var(--accent);
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 0.35rem;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      margin: 1.25rem 0 0.5rem;
+      font-size: 1.05rem;
+      page-break-after: avoid;
+    }
+
+    p { margin: 0.55rem 0; }
+
+    ul, ol { margin: 0.4rem 0 0.8rem; padding-left: 1.35rem; }
+    li { margin: 0.25rem 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1.1rem;
+      font-size: 0.92rem;
+      page-break-inside: avoid;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e8f4fa;
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) td { background: #fafbfd; }
+
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.86rem;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      overflow-x: auto;
+      line-height: 1.4;
+      page-break-inside: avoid;
+    }
+
+    .callout {
+      background: #eef8fc;
+      border-left: 4px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0 6px 6px 0;
+      page-break-inside: avoid;
+    }
+
+    .toc {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0 1.75rem;
+    }
+
+    .toc h2 {
+      margin-top: 0;
+      border: none;
+      padding: 0;
+      font-size: 1rem;
+    }
+
+    .toc ol { margin-bottom: 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    .diagram {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.8rem;
+      white-space: pre;
+      background: #0f1720;
+      color: #d7e2ef;
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page {
+        max-width: none;
+        box-shadow: none;
+        padding: 0;
+      }
+      a { color: inherit; text-decoration: none; }
+      h2 { break-after: avoid; }
+      table, pre, .diagram, .callout { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <article class="page">
+    <header class="doc-header">
+      <p class="eyebrow">AquaAccess Facial</p>
+      <h1>Documentação de Arquitetura</h1>
+      <p class="meta">
+        <span>Versão do app 1.1.0</span>
+        <span>Onboarding técnico</span>
+        <span>Julho 2026</span>
+      </p>
+    </header>
+
+    <nav class="toc" aria-label="Sumário">
+      <h2>Sumário</h2>
+      <ol>
+        <li><a href="#visao">Visão geral</a></li>
+        <li><a href="#stack">Stack tecnológica</a></li>
+        <li><a href="#pastas">Estrutura de pastas</a></li>
+        <li><a href="#electron">Arquitetura Electron</a></li>
+        <li><a href="#fluxo">Fluxo de abertura</a></li>
+        <li><a href="#auth">Autenticação e perfis</a></li>
+        <li><a href="#banco">Banco de dados</a></li>
+        <li><a href="#cadastro">Cadastro de associados</a></li>
+        <li><a href="#regras">Regras de negócio</a></li>
+        <li><a href="#xpe">Integração Intelbras XPE</a></li>
+        <li><a href="#ui">Módulos da interface</a></li>
+        <li><a href="#novo-modulo">Como adicionar um novo módulo</a></li>
+        <li><a href="#pendencias">Limitações e pendências</a></li>
+        <li><a href="#api">Referência rápida da API</a></li>
+      </ol>
+    </nav>
+
+    <section id="visao">
+      <h2>1. Visão geral</h2>
+      <p>
+        O <strong>AquaAccess Facial</strong> é uma aplicação desktop <strong>offline-first</strong>
+        para <strong>controle de acesso às piscinas</strong> de um clube. O fluxo principal cobre:
+      </p>
+      <ol>
+        <li>Cadastro de associados (chamados de <em>pacientes</em> na UI e no banco)</li>
+        <li>Registro e validade de exames médicos</li>
+        <li>Liberação ou negação de acesso à catraca/piscina</li>
+        <li>Integração em rede com o videoporteiro <strong>Intelbras XPE 3200 PLUS IP</strong></li>
+      </ol>
+      <p>
+        Não há backend remoto obrigatório: tudo roda localmente no PC do clube.
+        A tela de sincronização com nuvem (Supabase) existe na UI, mas ainda é <strong>placeholder</strong>.
+      </p>
+    </section>
+
+    <section id="stack">
+      <h2>2. Stack tecnológica</h2>
+      <table>
+        <thead><tr><th>Camada</th><th>Tecnologia</th></tr></thead>
+        <tbody>
+          <tr><td>Runtime desktop</td><td>Electron 41</td></tr>
+          <tr><td>Interface</td><td>HTML, CSS e JavaScript vanilla</td></tr>
+          <tr><td>Banco local</td><td>sql.js (SQLite em WASM)</td></tr>
+          <tr><td>Autenticação</td><td>bcryptjs</td></tr>
+          <tr><td>Integração XPE</td><td>HTTP local + TCP + Playwright (opcional)</td></tr>
+          <tr><td>Empacotamento</td><td>electron-builder (NSIS Windows)</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Comando</th><th>Função</th></tr></thead>
+        <tbody>
+          <tr><td><code>npm start</code></td><td>App em desenvolvimento</td></tr>
+          <tr><td><code>npm run dist</code></td><td>Instalador em <code>release/</code></td></tr>
+          <tr><td><code>npm run xpe:install-browser</code></td><td>Instala Chromium do Playwright</td></tr>
+          <tr><td><code>npm run xpe:test</code></td><td>Teste isolado da automação XPE</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="pastas">
+      <h2>3. Estrutura de pastas</h2>
+      <pre>facial/
+├── main.js                 # Processo principal (janela, IPC, bridge)
+├── preload.js              # contextBridge → window.clubAccess
+├── db.js                   # Schema SQLite + regras de negócio
+├── xpeBridge.js            # Servidor HTTP para eventos do XPE
+├── xpeSetup.js             # Descoberta de IP/LAN e assistente
+├── xpeAutomation/          # Playwright (painel web do XPE)
+├── renderer/
+│   ├── login/              # Tela de login
+│   ├── medico/             # Painel médico
+│   ├── admin/              # Shell admin + views
+│   └── shared/             # CSS compartilhado
+├── docs/                   # Documentação
+└── release/                # Artefatos de build</pre>
+
+      <h3>Dados em runtime (Windows)</h3>
+      <p>Pasta típica: <code>%APPDATA%\AquaAccess Facial\</code></p>
+      <table>
+        <thead><tr><th>Item</th><th>Conteúdo</th></tr></thead>
+        <tbody>
+          <tr><td><code>club-piscinas.db</code></td><td>Banco SQLite</td></tr>
+          <tr><td><code>patient-photos/</code></td><td>Fotos dos associados</td></tr>
+          <tr><td><code>device-settings.json</code></td><td>Configurações gerais</td></tr>
+          <tr><td><code>xpe-bridge-settings.json</code></td><td>Bridge HTTP / OpenDoor</td></tr>
+          <tr><td><code>xpe-integration.json</code></td><td>Estado da integração XPE</td></tr>
+          <tr><td><code>xpe-export/</code></td><td>Exportação de usuários</td></tr>
+          <tr><td><code>xpe-bridge-inbound.ndjson</code></td><td>Log bruto do XPE</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="electron">
+      <h2>4. Arquitetura Electron</h2>
+      <div class="diagram">┌─────────────────────────────────────────────────────┐
+│  Processo Principal (main.js)                       │
+│  ├─ db.js           → domínio / SQLite              │
+│  ├─ xpeBridge.js    → HTTP ← XPE                    │
+│  ├─ xpeSetup.js     → descoberta / assistente       │
+│  └─ xpeAutomation/  → Playwright → painel web XPE   │
+├─────────────────────────────────────────────────────┤
+│  preload.js → window.clubAccess.*                   │
+├─────────────────────────────────────────────────────┤
+│  Renderer: login → medico | admin                   │
+└─────────────────────────────────────────────────────┘</div>
+      <p>
+        Segurança: <code>contextIsolation: true</code>, <code>nodeIntegration: false</code>.
+        Comunicação apenas via IPC.
+      </p>
+      <div class="callout">
+        <strong>Padrão para feature nova:</strong>
+        <code>db.js</code> → <code>main.js</code> (IPC) → <code>preload.js</code> → renderer.
+      </div>
+    </section>
+
+    <section id="fluxo">
+      <h2>5. Fluxo desde a abertura</h2>
+      <ol>
+        <li>Usuário executa <code>npm start</code> ou o instalador.</li>
+        <li><code>app.whenReady</code>: <code>initDb()</code>, auto-discover XPE, bridge HTTP.</li>
+        <li><code>createWindow()</code> abre <code>renderer/login/login.html</code>.</li>
+        <li>Login via <code>window.clubAccess.login</code> → <code>authenticateUser</code>.</li>
+        <li>Sessão em <code>sessionStorage</code> (<code>clubAccessRole</code>, usuário, nome).</li>
+        <li>Redireciona: admin → <code>admin/home.html</code>; médico → <code>medico/medico.html</code>.</li>
+      </ol>
+      <h3>Credenciais padrão (seed)</h3>
+      <table>
+        <thead><tr><th>Perfil</th><th>Usuário</th><th>Senha</th></tr></thead>
+        <tbody>
+          <tr><td>Administrador</td><td><code>admin</code></td><td><code>admin</code></td></tr>
+          <tr><td>Médico</td><td><code>medico</code></td><td><code>admin</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="auth">
+      <h2>6. Autenticação e perfis</h2>
+      <ul>
+        <li>Hash bcrypt; checagem de usuário ativo.</li>
+        <li>Roles: apenas <strong>admin</strong> ou <strong>medico</strong>.</li>
+        <li>Admin pode entrar na aba médico; médico não entra como admin.</li>
+        <li>Não há JWT — sessão só no renderer.</li>
+      </ul>
+      <div class="callout">
+        Funções de CRUD de usuários do sistema existem em <code>db.js</code>
+        (<code>createSystemUser</code>, etc.), mas ainda <strong>não estão no preload/IPC/UI</strong>.
+      </div>
+      <p>
+        <strong>Atenção:</strong> hoje não há autorização por role no IPC.
+        Qualquer renderer autenticado pode chamar as APIs do preload.
+      </p>
+    </section>
+
+    <section id="banco">
+      <h2>7. Banco de dados</h2>
+      <p>Engine <strong>sql.js</strong>. Cada escrita chama <code>persist()</code> e grava <code>club-piscinas.db</code>.</p>
+      <table>
+        <thead><tr><th>Tabela</th><th>Conteúdo</th></tr></thead>
+        <tbody>
+          <tr><td><code>users</code></td><td>Operadores do software (admin/médico)</td></tr>
+          <tr><td><code>patients</code></td><td>Associados: nome, CPF, telefone, foto, blocked</td></tr>
+          <tr><td><code>exams</code></td><td>Exames com validade e status</td></tr>
+          <tr><td><code>access_events</code></td><td>Histórico liberado/negado</td></tr>
+        </tbody>
+      </table>
+      <p>O <code>patients.id</code> é o mesmo número usado como <strong>ID Usuário</strong> no XPE.</p>
+    </section>
+
+    <section id="cadastro">
+      <h2>8. Cadastro de associados</h2>
+      <p>Fluxo principal no painel médico:</p>
+      <ol>
+        <li>Nome, telefone (obrigatório), CPF (opcional).</li>
+        <li>Foto obrigatória (arquivo ou câmera).</li>
+        <li><code>patientsCreate</code> → <code>createPatient</code> → grava foto em <code>patient-photos/</code>.</li>
+      </ol>
+      <p>
+        No domínio: associados do clube = <code>patients</code>;
+        operadores do app = <code>users</code>.
+      </p>
+    </section>
+
+    <section id="regras">
+      <h2>9. Regras de negócio</h2>
+      <p><strong>Centro de verdade:</strong> <code>db.js</code>.</p>
+
+      <h3>Liberação — <code>registerPoolAccess</code></h3>
+      <p>Concede acesso se:</p>
+      <ol>
+        <li>Paciente existe</li>
+        <li>Não está <code>blocked</code></li>
+        <li>Tem exame <code>Válido</code> com <code>valid_until</code> ≥ hoje (inclui “vence nesta semana”)</li>
+      </ol>
+      <p>Caso contrário, nega. Sempre grava em <code>access_events</code>.</p>
+
+      <h3>Exame — <code>createExam</code></h3>
+      <ul>
+        <li>Validade = data do exame + N dias (configurável; padrão 30)</li>
+        <li>Alinha a dias da semana permitidos</li>
+        <li>Exames vigentes anteriores → <code>Substituído</code>; novo → <code>Válido</code></li>
+      </ul>
+    </section>
+
+    <section id="xpe">
+      <h2>10. Integração Intelbras XPE</h2>
+      <ol>
+        <li>XPE envia evento HTTP para o PC (ex.: porta <code>37891</code>, path <code>/intelbras/xpe</code>).</li>
+        <li>Bridge extrai <code>userId</code> ou CPF.</li>
+        <li><code>findPatientIdForXpeBridge</code> resolve o paciente.</li>
+        <li>Chama a mesma <code>registerPoolAccess</code>.</li>
+        <li>Se liberado e OpenDoor ativo → HTTP OpenDoor no equipamento.</li>
+      </ol>
+      <p>
+        Exportação de fotos/CSV e sync Playwright ficam em Dispositivo facial (admin).
+        Ajuste de seletores: <code>xpeAutomation/selectors.js</code>.
+      </p>
+    </section>
+
+    <section id="ui">
+      <h2>11. Módulos da interface</h2>
+      <h3>Médico</h3>
+      <ul>
+        <li>Pacientes — cadastro, foto, visão por atenção</li>
+        <li>Exames — validação e histórico</li>
+      </ul>
+      <h3>Admin</h3>
+      <table>
+        <thead><tr><th>View</th><th>Função</th></tr></thead>
+        <tbody>
+          <tr><td>Visão geral</td><td>Dashboard e status do leitor</td></tr>
+          <tr><td>Pacientes</td><td>Lista, edição, bloqueio, sync</td></tr>
+          <tr><td>Controle de acessos</td><td>Eventos e stats do dia</td></tr>
+          <tr><td>Dispositivo facial</td><td>TCP, export, bridge, Playwright</td></tr>
+          <tr><td>Relatórios</td><td>PDF / CSV</td></tr>
+          <tr><td>Sincronização</td><td>Local OK; nuvem placeholder</td></tr>
+          <tr><td>Exames</td><td>Gestão administrativa</td></tr>
+          <tr><td>Configurações</td><td>Clube, regras, XPE, bridge</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="novo-modulo">
+      <h2>12. Como adicionar um novo módulo</h2>
+      <ol>
+        <li>Funções em <code>db.js</code> e export.</li>
+        <li><code>ipcMain.handle</code> em <code>main.js</code>.</li>
+        <li>Expor em <code>preload.js</code> (<code>window.clubAccess</code>).</li>
+        <li>Admin: view HTML + <code>VIEW_FILES</code> + nav + lógica em <code>admin.js</code>.</li>
+        <li>Médico: seções em <code>medico.html</code> + <code>medico.js</code>.</li>
+        <li>Integração externa: módulo no main (como <code>xpeBridge.js</code>).</li>
+      </ol>
+      <p>Não acessar Node/filesystem/banco direto no renderer.</p>
+    </section>
+
+    <section id="pendencias">
+      <h2>13. Limitações e pendências</h2>
+      <table>
+        <thead><tr><th>Item</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr><td>Sync nuvem / Supabase</td><td>UI placeholder</td></tr>
+          <tr><td>CRUD de usuários do sistema</td><td>Só no <code>db.js</code>, sem IPC/UI</td></tr>
+          <tr><td>Autorização por role no IPC</td><td>Não implementada</td></tr>
+          <tr><td>Browsers Playwright no .exe</td><td>Instalar no PC destino</td></tr>
+          <tr><td><code>admin.js</code></td><td>Monólito grande (~2.5k linhas)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="api">
+      <h2>14. Referência rápida da API (preload)</h2>
+      <table>
+        <thead><tr><th>Método</th><th>Uso</th></tr></thead>
+        <tbody>
+          <tr><td><code>login</code></td><td>Autenticação</td></tr>
+          <tr><td><code>patientsCreate</code> / Update / List / …</td><td>Pacientes</td></tr>
+          <tr><td><code>examsRegister</code> / List / Delete</td><td>Exames</td></tr>
+          <tr><td><code>accessRegisterPool</code> / List / Stats</td><td>Acessos</td></tr>
+          <tr><td><code>reportsSummary</code> / Rows</td><td>Relatórios</td></tr>
+          <tr><td><code>dashboardSnapshot</code></td><td>Dashboard</td></tr>
+          <tr><td><code>deviceSettingsGet</code> / Set</td><td>Configurações</td></tr>
+          <tr><td><code>xpeBridge*</code> / <code>xpeExport*</code> / <code>xpeSyncUser</code></td><td>Integração XPE</td></tr>
+          <tr><td><code>xpeSetupDiscover</code> / Apply</td><td>Assistente Intelbras</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      Documento gerado para onboarding técnico do projeto AquaAccess Facial.
+      Fontes: <code>docs/arquitetura.md</code> e <code>docs/arquitetura.html</code>.
+      Para PDF: abra o HTML no navegador e use Imprimir → Salvar como PDF.
+    </footer>
+  </article>
+</body>
+</html>
