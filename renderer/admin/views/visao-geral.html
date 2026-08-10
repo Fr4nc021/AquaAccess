@@ -2,7 +2,7 @@
   <header class="admin-view-head">
     <div class="admin-view-head__text">
       <h1 class="admin-view-head__title" id="dashboard-title">Visão geral</h1>
-      <p class="admin-view-head__desc">Acompanhamento operacional do clube</p>
+      <p class="admin-view-head__desc" id="dash-head-desc">Dados do banco local e teste de alcance do leitor na rede</p>
     </div>
   </header>
 
@@ -10,7 +10,8 @@
     <article class="admin-stat-card">
       <div class="admin-stat-card__text">
         <p class="admin-stat-card__label">Total pacientes</p>
-        <p class="admin-stat-card__value">545</p>
+        <p class="admin-stat-card__value" id="dash-stat-patients">0</p>
+        <p class="admin-stat-card__meta" id="dash-stat-patients-meta"></p>
       </div>
       <div class="admin-stat-card__icon admin-stat-card__icon--blue" aria-hidden="true">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
@@ -23,7 +24,8 @@
     <article class="admin-stat-card">
       <div class="admin-stat-card__text">
         <p class="admin-stat-card__label">Exames válidos</p>
-        <p class="admin-stat-card__value">412</p>
+        <p class="admin-stat-card__value" id="dash-stat-valid">0</p>
+        <p class="admin-stat-card__meta" id="dash-stat-valid-meta"></p>
       </div>
       <div class="admin-stat-card__icon admin-stat-card__icon--green" aria-hidden="true">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
@@ -35,7 +37,8 @@
     <article class="admin-stat-card">
       <div class="admin-stat-card__text">
         <p class="admin-stat-card__label">Exames vencidos</p>
-        <p class="admin-stat-card__value">73</p>
+        <p class="admin-stat-card__value" id="dash-stat-expired">0</p>
+        <p class="admin-stat-card__meta" id="dash-stat-expired-meta"></p>
       </div>
       <div class="admin-stat-card__icon admin-stat-card__icon--red" aria-hidden="true">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
@@ -48,7 +51,8 @@
     <article class="admin-stat-card">
       <div class="admin-stat-card__text">
         <p class="admin-stat-card__label">Acessos hoje</p>
-        <p class="admin-stat-card__value">234</p>
+        <p class="admin-stat-card__value" id="dash-stat-access">0</p>
+        <p class="admin-stat-card__meta" id="dash-stat-access-meta"></p>
       </div>
       <div class="admin-stat-card__icon admin-stat-card__icon--orange" aria-hidden="true">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
@@ -59,23 +63,25 @@
     </article>
     <article class="admin-stat-card">
       <div class="admin-stat-card__text">
-        <p class="admin-stat-card__label">Sistema</p>
-        <p class="admin-stat-card__value admin-stat-card__value--sm">Online</p>
+        <p class="admin-stat-card__label">Sistema (local)</p>
+        <p class="admin-stat-card__value admin-stat-card__value--sm" id="dash-stat-system">Operacional</p>
+        <p class="admin-stat-card__meta" id="dash-stat-system-meta"></p>
       </div>
       <div class="admin-stat-card__icon admin-stat-card__icon--green" aria-hidden="true">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-          <path d="M12 20h.01" />
+          <ellipse cx="12" cy="5" rx="9" ry="3" />
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
         </svg>
       </div>
     </article>
-    <article class="admin-stat-card">
+    <article class="admin-stat-card" id="dash-device-card">
       <div class="admin-stat-card__text">
-        <p class="admin-stat-card__label">Dispositivo</p>
-        <p class="admin-stat-card__value admin-stat-card__value--sm">Conectado</p>
+        <p class="admin-stat-card__label">Leitor facial (rede)</p>
+        <p class="admin-stat-card__value admin-stat-card__value--sm" id="dash-stat-device">—</p>
+        <p class="admin-stat-card__meta" id="dash-stat-device-meta"></p>
       </div>
-      <div class="admin-stat-card__icon admin-stat-card__icon--green" aria-hidden="true">
+      <div class="admin-stat-card__icon admin-stat-card__icon--blue" aria-hidden="true" id="dash-stat-device-icon">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
           <rect x="2" y="6" width="20" height="12" rx="2" />
           <circle cx="12" cy="12" r="3" />
@@ -90,69 +96,31 @@
       <div class="admin-panel__head">
         <div>
           <h2 class="admin-panel__title">Exames por mês</h2>
-          <p class="admin-panel__subtitle">Últimos 6 meses</p>
+          <p class="admin-panel__subtitle">Últimos 6 meses · registros no banco local</p>
         </div>
-        <span class="admin-trend-pill">+24% vs período anterior</span>
+        <span class="admin-trend-pill" id="dash-chart-summary">—</span>
       </div>
-      <div class="admin-area-wrap">
-        <svg class="admin-area-chart" viewBox="0 0 520 220" role="img" aria-label="Gráfico de exames por mês">
-          <defs>
-            <linearGradient id="adminAreaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#f97316" stop-opacity="0.45" />
-              <stop offset="100%" stop-color="#f97316" stop-opacity="0" />
-            </linearGradient>
-          </defs>
-          <g class="admin-area-chart__grid" stroke="rgba(255,255,255,0.06)" stroke-width="1">
-            <line x1="48" y1="40" x2="480" y2="40" />
-            <line x1="48" y1="88" x2="480" y2="88" />
-            <line x1="48" y1="136" x2="480" y2="136" />
-            <line x1="48" y1="184" x2="480" y2="184" />
-          </g>
-          <text class="admin-area-chart__axis" x="40" y="44" text-anchor="end">240</text>
-          <text class="admin-area-chart__axis" x="40" y="92" text-anchor="end">180</text>
-          <text class="admin-area-chart__axis" x="40" y="140" text-anchor="end">120</text>
-          <text class="admin-area-chart__axis" x="40" y="188" text-anchor="end">60</text>
-          <text class="admin-area-chart__axis" x="40" y="200" text-anchor="end">0</text>
-          <path
-            fill="url(#adminAreaGrad)"
-            d="M 72 168 L 144 148 L 216 124 L 288 96 L 360 72 L 432 52 L 432 200 L 72 200 Z"
-          />
-          <path
-            fill="none"
-            stroke="#f97316"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M 72 168 L 144 148 L 216 124 L 288 96 L 360 72 L 432 52"
-          />
-          <g class="admin-area-chart__labels" fill="#6b7c8f" font-size="11">
-            <text x="72" y="214" text-anchor="middle">Out</text>
-            <text x="144" y="214" text-anchor="middle">Nov</text>
-            <text x="216" y="214" text-anchor="middle">Dez</text>
-            <text x="288" y="214" text-anchor="middle">Jan</text>
-            <text x="360" y="214" text-anchor="middle">Fev</text>
-            <text x="432" y="214" text-anchor="middle">Mar</text>
-          </g>
-        </svg>
-      </div>
+      <div class="admin-dash-monthly" id="dash-monthly-chart" role="img" aria-label="Gráfico de exames por mês"></div>
+      <p class="admin-dash-monthly-empty" id="dash-monthly-empty" hidden>Nenhum exame registrado nesse período.</p>
     </article>
 
     <article class="admin-panel admin-panel--donut">
       <div class="admin-panel__head">
         <div>
-          <h2 class="admin-panel__title">Status geral</h2>
-          <p class="admin-panel__subtitle">Distribuição dos exames</p>
+          <h2 class="admin-panel__title">Status dos pacientes</h2>
+          <p class="admin-panel__subtitle">Com base no exame vigente (local)</p>
         </div>
       </div>
       <div class="admin-donut-block">
-        <div class="admin-donut" role="img" aria-label="412 válidos, 48 vencendo, 73 vencidos, 12 bloqueados"></div>
-        <ul class="admin-donut-legend">
-          <li><span class="admin-dot admin-dot--green"></span> Válidos <strong>412</strong></li>
-          <li><span class="admin-dot admin-dot--yellow"></span> Vencendo <strong>48</strong></li>
-          <li><span class="admin-dot admin-dot--red"></span> Vencidos <strong>73</strong></li>
-          <li><span class="admin-dot admin-dot--blue"></span> Bloqueados <strong>12</strong></li>
+        <div class="admin-donut" id="dash-donut" role="img" aria-label="Distribuição por status"></div>
+        <ul class="admin-donut-legend" id="dash-donut-legend">
+          <li><span class="admin-dot admin-dot--green"></span> Válidos <strong id="dash-legend-valid">0</strong></li>
+          <li><span class="admin-dot admin-dot--yellow"></span> Vencendo na semana <strong id="dash-legend-expiring">0</strong></li>
+          <li><span class="admin-dot admin-dot--red"></span> Vencidos <strong id="dash-legend-expired">0</strong></li>
+          <li><span class="admin-dot admin-dot--blue"></span> Bloqueados <strong id="dash-legend-blocked">0</strong></li>
         </ul>
       </div>
+      <p class="admin-dash-extra-meta" id="dash-extra-meta"></p>
     </article>
   </div>
 </section>

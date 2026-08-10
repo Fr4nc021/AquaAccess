@@ -3,107 +3,455 @@
     <header class="admin-settings-head">
       <div class="admin-settings-head__text">
         <h1 class="admin-view-head__title" id="config-page-title">Configurações</h1>
-        <p class="admin-view-head__desc">Parâmetros gerais do sistema</p>
+        <p class="admin-view-head__desc">
+          Cadastre aqui tudo o que o AquaAccess precisa para falar com o Intelbras XPE. Salve e use
+          <strong>Detectar e configurar</strong> para gerar a URL do Log de Acesso.
+        </p>
       </div>
     </header>
 
     <form id="form-device-settings" class="admin-settings-form admin-settings-form--page">
       <div class="admin-settings-panels admin-settings-stack">
-        <article class="admin-panel admin-settings-card">
-          <h2 class="admin-settings-card__title">Geral</h2>
-          <div class="admin-settings-card__fields">
+        <article class="admin-panel admin-settings-card admin-xpe-setup" id="xpe-wizard-card">
+          <div class="admin-xpe-setup__intro">
+            <h2 class="admin-settings-card__title">Conexão Intelbras</h2>
+            <p class="admin-settings-weekdays__help admin-xpe-setup__lead">
+              Preencha IP/porta do videoporteiro, credenciais web e a rede deste PC. O XPE reconhece a face;
+              o AquaAccess recebe o evento pelo bridge HTTP (app precisa estar aberto).
+            </p>
+          </div>
+
+          <div id="xpe-wizard-status" class="admin-xpe-wizard__status" role="status" hidden></div>
+
+          <div class="admin-xpe-setup__fields">
+            <div class="admin-settings-grid admin-settings-grid--device">
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">Nome do dispositivo</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-device-name"
+                  name="deviceName"
+                  autocomplete="off"
+                  placeholder="Intelbras XPE 3200 PLUS IP"
+                />
+              </label>
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">Local (catraca / entrada)</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-location-label"
+                  name="locationLabel"
+                  autocomplete="off"
+                  placeholder="Catraca principal"
+                />
+              </label>
+            </div>
+
             <label class="admin-modal__field">
-              <span class="admin-modal__label">Nome do clube</span>
-              <input type="text" class="admin-modal__input" id="field-club-name" name="clubName" autocomplete="organization" />
-            </label>
-            <label class="admin-modal__field">
-              <span class="admin-modal__label">Nome do sistema</span>
-              <input type="text" class="admin-modal__input" id="field-system-name" name="systemName" autocomplete="off" />
-            </label>
-            <label class="admin-modal__field">
-              <span class="admin-modal__label">Validade padrão de exame (dias)</span>
+              <span class="admin-modal__label">URL do Intelbras (painel web)</span>
               <input
-                type="number"
+                type="url"
                 class="admin-modal__input"
-                id="field-exam-validity-days"
-                name="defaultExamValidityDays"
-                min="1"
-                max="3650"
-                inputmode="numeric"
+                id="field-xpe-device-url"
+                name="xpeDeviceUrl"
+                autocomplete="off"
+                placeholder="http://192.168.0.67 ou http://192.168.15.4:80"
               />
             </label>
+
+            <div class="admin-settings-grid admin-settings-grid--device">
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">IP do dispositivo</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-device-ip"
+                  name="ip"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="192.168.0.67"
+                />
+              </label>
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">Porta do painel web</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-device-port"
+                  name="devicePort"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="80"
+                />
+              </label>
+            </div>
+
+            <div class="admin-settings-grid admin-settings-grid--device">
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">Usuário web do XPE</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-xpe-web-user"
+                  autocomplete="off"
+                  placeholder="admin"
+                />
+              </label>
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">Senha web do XPE</span>
+                <input
+                  type="password"
+                  class="admin-modal__input"
+                  id="field-xpe-web-password"
+                  autocomplete="new-password"
+                  placeholder="Digite a senha e clique em Salvar"
+                />
+                <p id="xpe-web-password-status" class="admin-settings-weekdays__help" style="margin-top: 0.35rem" hidden></p>
+              </label>
+            </div>
+
+            <label class="admin-modal__field">
+              <span class="admin-modal__label">IP deste computador (LAN)</span>
+              <input
+                type="text"
+                class="admin-modal__input"
+                id="field-pc-lan-ip"
+                name="pcLanIp"
+                inputmode="decimal"
+                autocomplete="off"
+                placeholder="Detectado automaticamente — ex.: 192.168.15.23"
+              />
+              <p class="admin-settings-weekdays__help" style="margin-top: 0.35rem">
+                O Intelbras deve enviar o Log de Acesso para <strong>este IP</strong> (mesma rede do equipamento).
+              </p>
+              <p id="xpe-wizard-lan-extra" class="admin-xpe-wizard__muted" hidden></p>
+            </label>
+
+            <h3 class="admin-xpe-setup__section-title">Bridge HTTP (XPE → este PC)</h3>
+            <p class="admin-settings-weekdays__help" style="margin: -4px 0 8px">
+              O equipamento chama esta URL a cada acesso facial. Ajuste porta/path só se já estiver configurado
+              diferente no XPE.
+            </p>
+            <div class="admin-settings-toggles admin-settings-toggles--solo" role="group" aria-label="Bridge HTTP">
+              <label class="admin-settings-toggle">
+                <span class="admin-settings-toggle__label">Receber eventos de acesso na rede local</span>
+                <span class="admin-settings-toggle__switch">
+                  <input type="checkbox" class="admin-settings-toggle__input" id="toggle-xpe-bridge-enabled" name="xpeBridgeEnabled" />
+                  <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="admin-settings-toggle">
+                <span class="admin-settings-toggle__label">Gravar log bruto das requisições (NDJSON)</span>
+                <span class="admin-settings-toggle__switch">
+                  <input type="checkbox" class="admin-settings-toggle__input" id="toggle-xpe-bridge-log-inbound" name="xpeBridgeLogInbound" />
+                  <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                </span>
+              </label>
+            </div>
+            <p class="admin-settings-weekdays__help" style="margin: 0 0 12px">
+              Arquivo:
+              <code id="xpe-inbound-log-path-hint" style="word-break: break-all">—</code>
+              <button type="button" class="admin-settings-save-btn" id="btn-xpe-open-inbound-log" style="margin-left: 10px; padding: 0.35rem 0.75rem; font-size: 0.85rem">
+                Abrir log no editor
+              </button>
+            </p>
+            <div class="admin-settings-grid admin-settings-grid--device">
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">Porta HTTP no PC</span>
+                <input
+                  type="number"
+                  class="admin-modal__input"
+                  id="field-xpe-bridge-port"
+                  name="xpeBridgePort"
+                  min="1"
+                  max="65535"
+                  inputmode="numeric"
+                  placeholder="37891"
+                />
+              </label>
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">Caminho (path)</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-xpe-bridge-path"
+                  name="xpeBridgePath"
+                  autocomplete="off"
+                  placeholder="/intelbras/xpe"
+                />
+              </label>
+            </div>
+            <p class="admin-settings-weekdays__help" style="margin: 8px 0 10px">
+              URL gerada (IP LAN:
+              <strong id="xpe-bridge-lan-hint">—</strong>):
+              <code id="xpe-bridge-url-example" style="word-break: break-all; display: block; margin-top: 6px">—</code>
+            </p>
+            <label class="admin-modal__field">
+              <span class="admin-modal__label">Token opcional (cabeçalho <code>X-AquaAccess-Token</code>)</span>
+              <input
+                type="password"
+                class="admin-modal__input"
+                id="field-xpe-bridge-secret"
+                name="xpeBridgeSecret"
+                autocomplete="new-password"
+                placeholder="Deixe em branco se o XPE não enviar token"
+              />
+            </label>
+
+            <h3 class="admin-xpe-setup__section-title">OpenDoor (opcional)</h3>
+            <p class="admin-settings-weekdays__help" style="margin: -4px 0 10px">
+              Só ative se o XPE <strong>não</strong> abrir o relé sozinho. Usa o mesmo usuário/senha web acima.
+            </p>
+            <div class="admin-settings-toggles admin-settings-toggles--solo" role="group" aria-label="OpenDoor opcional" style="margin-bottom: 12px">
+              <label class="admin-settings-toggle">
+                <span class="admin-settings-toggle__label">Chamar OpenDoor via HTTP quando o sistema liberar o acesso</span>
+                <span class="admin-settings-toggle__switch">
+                  <input type="checkbox" class="admin-settings-toggle__input" id="toggle-xpe-open-door" name="xpeOpenDoorWhenGranted" />
+                  <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                </span>
+              </label>
+            </div>
+            <div class="admin-settings-grid admin-settings-grid--device">
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">URL base do XPE (sem barra final)</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-xpe-open-door-base"
+                  name="xpeOpenDoorBaseUrl"
+                  autocomplete="off"
+                  placeholder="http://192.168.0.67"
+                />
+              </label>
+              <label class="admin-modal__field">
+                <span class="admin-modal__label">DoorNum</span>
+                <input
+                  type="text"
+                  class="admin-modal__input"
+                  id="field-xpe-open-door-num"
+                  name="xpeOpenDoorNum"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="1"
+                />
+              </label>
+            </div>
+            <!-- Credenciais OpenDoor = usuário/senha web (preenchidas no save) -->
+            <input type="hidden" id="field-xpe-open-door-user" name="xpeOpenDoorUser" value="" />
+            <input type="hidden" id="field-xpe-open-door-password" name="xpeOpenDoorPassword" value="" />
           </div>
+
+          <div class="admin-xpe-wizard__actions">
+            <button type="button" class="admin-settings-save-btn" id="btn-xpe-setup-apply">
+              Detectar e configurar
+            </button>
+            <button type="button" class="admin-settings-save-btn admin-xpe-wizard__btn-secondary" id="btn-xpe-setup-refresh">
+              Atualizar detecção
+            </button>
+          </div>
+
+          <label class="admin-modal__field admin-xpe-setup__action-url">
+            <span class="admin-modal__label">URL para colar no Intelbras — Log de Acesso</span>
+            <div class="admin-xpe-wizard__copy-row">
+              <input
+                type="text"
+                class="admin-modal__input"
+                id="field-xpe-action-url"
+                readonly
+                aria-readonly="true"
+                placeholder="Execute Detectar e configurar para gerar"
+              />
+              <button type="button" class="admin-settings-save-btn admin-xpe-wizard__btn-copy" id="btn-xpe-copy-action-url">
+                Copiar
+              </button>
+            </div>
+          </label>
+
+          <ol class="admin-xpe-checklist" id="xpe-wizard-checklist" aria-label="Passos para o reconhecimento facial">
+            <li class="admin-xpe-checklist__item" data-check="device" id="xpe-check-device">
+              <span class="admin-xpe-checklist__mark" aria-hidden="true"></span>
+              <span>IP/porta do XPE preenchidos</span>
+            </li>
+            <li class="admin-xpe-checklist__item" data-check="creds" id="xpe-check-creds">
+              <span class="admin-xpe-checklist__mark" aria-hidden="true"></span>
+              <span>Usuário web do XPE informado</span>
+            </li>
+            <li class="admin-xpe-checklist__item" data-check="lan" id="xpe-check-lan">
+              <span class="admin-xpe-checklist__mark" aria-hidden="true"></span>
+              <span>IP LAN deste PC definido</span>
+            </li>
+            <li class="admin-xpe-checklist__item" data-check="detect" id="xpe-check-detect">
+              <span class="admin-xpe-checklist__mark" aria-hidden="true"></span>
+              <span>Equipamento alcançado (probe) e bridge ligado</span>
+            </li>
+            <li class="admin-xpe-checklist__item" data-check="paste" id="xpe-check-paste">
+              <span class="admin-xpe-checklist__mark" aria-hidden="true"></span>
+              <span>No XPE: <strong>Ações URL → Log de Acesso</strong> — cole a URL e aplique</span>
+            </li>
+            <li class="admin-xpe-checklist__item" data-check="users" id="xpe-check-users">
+              <span class="admin-xpe-checklist__mark" aria-hidden="true"></span>
+              <span>No XPE, <strong>ID Usuário</strong> = ID do paciente no AquaAccess (com foto)</span>
+            </li>
+            <li class="admin-xpe-checklist__item" data-check="firewall" id="xpe-check-firewall">
+              <span class="admin-xpe-checklist__mark" aria-hidden="true"></span>
+              <span>Firewall Windows: autorize o AquaAccess na rede <strong>privada</strong></span>
+            </li>
+          </ol>
+          <p id="xpe-wizard-missing" class="admin-xpe-wizard__missing" hidden></p>
+          <p class="admin-xpe-setup__hint">
+            Depois de salvar: use <strong>Dispositivo facial → Exportar usuários</strong> (CSV/fotos) ou
+            <strong>Sincronizar Intelbras</strong> (Playwright, precisa Chromium instalado).
+          </p>
         </article>
 
-        <article class="admin-panel admin-settings-card">
-          <h2 class="admin-settings-card__title">Dispositivo Intelbras</h2>
-          <div class="admin-settings-grid admin-settings-grid--device">
-            <label class="admin-modal__field">
-              <span class="admin-modal__label">IP do dispositivo</span>
-              <input type="text" class="admin-modal__input" id="field-device-ip" name="ip" inputmode="decimal" autocomplete="off" />
-            </label>
-            <label class="admin-modal__field">
-              <span class="admin-modal__label">Porta</span>
-              <input type="text" class="admin-modal__input" id="field-device-port" name="devicePort" inputmode="numeric" autocomplete="off" />
-            </label>
-          </div>
-          <div class="admin-settings-toggles" role="group" aria-label="Opções do dispositivo">
-            <label class="admin-settings-toggle">
-              <span class="admin-settings-toggle__label">Auto-sincronização a cada 5 minutos</span>
-              <span class="admin-settings-toggle__switch">
-                <input type="checkbox" class="admin-settings-toggle__input" id="toggle-auto-sync" name="autoSync5Min" />
-                <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+        <details class="admin-settings-advanced" id="settings-advanced">
+          <summary class="admin-settings-advanced__summary">
+            <span class="admin-settings-advanced__summary-text">
+              <span class="admin-settings-advanced__summary-title">Configurações avançadas</span>
+              <span class="admin-settings-advanced__summary-desc">
+                Clube, aparência, regras de exame e notificações
               </span>
-            </label>
-            <label class="admin-settings-toggle">
-              <span class="admin-settings-toggle__label">Bloquear automaticamente exames vencidos</span>
-              <span class="admin-settings-toggle__switch">
-                <input type="checkbox" class="admin-settings-toggle__input" id="toggle-block-expired" name="blockExpiredExams" />
-                <span class="admin-settings-toggle__track" aria-hidden="true"></span>
-              </span>
-            </label>
-          </div>
-        </article>
+            </span>
+            <span class="admin-settings-advanced__chevron" aria-hidden="true"></span>
+          </summary>
 
-        <article class="admin-panel admin-settings-card">
-          <h2 class="admin-settings-card__title">Notificações</h2>
-          <div class="admin-settings-toggles admin-settings-toggles--solo" role="group" aria-label="Preferências de notificação">
-            <label class="admin-settings-toggle">
-              <span class="admin-settings-toggle__label">Alertar 5 dias antes do vencimento</span>
-              <span class="admin-settings-toggle__switch">
-                <input type="checkbox" class="admin-settings-toggle__input" id="toggle-notify-5days" name="notify5DaysBefore" />
-                <span class="admin-settings-toggle__track" aria-hidden="true"></span>
-              </span>
-            </label>
-            <label class="admin-settings-toggle">
-              <span class="admin-settings-toggle__label">Notificar tentativas de acesso negadas</span>
-              <span class="admin-settings-toggle__switch">
-                <input type="checkbox" class="admin-settings-toggle__input" id="toggle-notify-denied" name="notifyDeniedAccess" />
-                <span class="admin-settings-toggle__track" aria-hidden="true"></span>
-              </span>
-            </label>
-            <label class="admin-settings-toggle">
-              <span class="admin-settings-toggle__label">Email diário com resumo operacional</span>
-              <span class="admin-settings-toggle__switch">
-                <input type="checkbox" class="admin-settings-toggle__input" id="toggle-daily-email" name="dailyEmailSummary" />
-                <span class="admin-settings-toggle__track" aria-hidden="true"></span>
-              </span>
-            </label>
+          <div class="admin-settings-advanced__body admin-settings-stack">
+            <article class="admin-panel admin-settings-card">
+              <h2 class="admin-settings-card__title">Geral</h2>
+              <div class="admin-settings-card__fields">
+                <label class="admin-modal__field">
+                  <span class="admin-modal__label">Nome do clube</span>
+                  <input type="text" class="admin-modal__input" id="field-club-name" name="clubName" autocomplete="organization" />
+                </label>
+                <label class="admin-modal__field">
+                  <span class="admin-modal__label">Nome do sistema</span>
+                  <input type="text" class="admin-modal__input" id="field-system-name" name="systemName" autocomplete="off" />
+                </label>
+                <fieldset class="admin-settings-theme" aria-labelledby="color-theme-label">
+                  <legend class="admin-modal__label" id="color-theme-label">Aparência do sistema</legend>
+                  <div class="admin-settings-theme__options" role="radiogroup" aria-label="Tema claro ou escuro">
+                    <label class="admin-settings-theme__option">
+                      <input type="radio" name="colorTheme" value="dark" checked />
+                      <span class="admin-settings-theme__swatch admin-settings-theme__swatch--dark" aria-hidden="true"></span>
+                      <span>Escuro (preto)</span>
+                    </label>
+                    <label class="admin-settings-theme__option">
+                      <input type="radio" name="colorTheme" value="light" />
+                      <span class="admin-settings-theme__swatch admin-settings-theme__swatch--light" aria-hidden="true"></span>
+                      <span>Claro (branco)</span>
+                    </label>
+                  </div>
+                </fieldset>
+                <label class="admin-modal__field">
+                  <span class="admin-modal__label">Validade padrão de exame (dias)</span>
+                  <input
+                    type="number"
+                    class="admin-modal__input"
+                    id="field-exam-validity-days"
+                    name="defaultExamValidityDays"
+                    min="1"
+                    max="3650"
+                    inputmode="numeric"
+                  />
+                </label>
+                <fieldset class="admin-settings-weekdays" aria-describedby="exam-weekdays-help">
+                  <legend class="admin-modal__label">Dias da semana para realizar exames</legend>
+                  <p class="admin-settings-weekdays__help" id="exam-weekdays-help">
+                    O vencimento sera ajustado para o proximo dia habilitado.
+                  </p>
+                  <div class="admin-settings-weekdays__grid">
+                    <label class="admin-settings-weekdays__item">
+                      <input type="checkbox" name="examAllowedWeekdays" value="1" />
+                      <span>Segunda</span>
+                    </label>
+                    <label class="admin-settings-weekdays__item">
+                      <input type="checkbox" name="examAllowedWeekdays" value="2" />
+                      <span>Terca</span>
+                    </label>
+                    <label class="admin-settings-weekdays__item">
+                      <input type="checkbox" name="examAllowedWeekdays" value="3" />
+                      <span>Quarta</span>
+                    </label>
+                    <label class="admin-settings-weekdays__item">
+                      <input type="checkbox" name="examAllowedWeekdays" value="4" />
+                      <span>Quinta</span>
+                    </label>
+                    <label class="admin-settings-weekdays__item">
+                      <input type="checkbox" name="examAllowedWeekdays" value="5" />
+                      <span>Sexta</span>
+                    </label>
+                    <label class="admin-settings-weekdays__item">
+                      <input type="checkbox" name="examAllowedWeekdays" value="6" />
+                      <span>Sabado</span>
+                    </label>
+                    <label class="admin-settings-weekdays__item">
+                      <input type="checkbox" name="examAllowedWeekdays" value="0" />
+                      <span>Domingo</span>
+                    </label>
+                  </div>
+                </fieldset>
+                <div class="admin-settings-toggles" role="group" aria-label="Opções de exame e sync">
+                  <label class="admin-settings-toggle">
+                    <span class="admin-settings-toggle__label">Auto-sincronização a cada 5 minutos</span>
+                    <span class="admin-settings-toggle__switch">
+                      <input type="checkbox" class="admin-settings-toggle__input" id="toggle-auto-sync" name="autoSync5Min" />
+                      <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="admin-settings-toggle">
+                    <span class="admin-settings-toggle__label">Bloquear automaticamente exames vencidos</span>
+                    <span class="admin-settings-toggle__switch">
+                      <input type="checkbox" class="admin-settings-toggle__input" id="toggle-block-expired" name="blockExpiredExams" />
+                      <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </article>
+
+            <article class="admin-panel admin-settings-card">
+              <h2 class="admin-settings-card__title">Notificações</h2>
+              <div class="admin-settings-toggles admin-settings-toggles--solo" role="group" aria-label="Preferências de notificação">
+                <label class="admin-settings-toggle">
+                  <span class="admin-settings-toggle__label">Alertar 5 dias antes do vencimento</span>
+                  <span class="admin-settings-toggle__switch">
+                    <input type="checkbox" class="admin-settings-toggle__input" id="toggle-notify-5days" name="notify5DaysBefore" />
+                    <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                  </span>
+                </label>
+                <label class="admin-settings-toggle">
+                  <span class="admin-settings-toggle__label">Notificar tentativas de acesso negadas</span>
+                  <span class="admin-settings-toggle__switch">
+                    <input type="checkbox" class="admin-settings-toggle__input" id="toggle-notify-denied" name="notifyDeniedAccess" />
+                    <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                  </span>
+                </label>
+                <label class="admin-settings-toggle">
+                  <span class="admin-settings-toggle__label">Email diário com resumo operacional</span>
+                  <span class="admin-settings-toggle__switch">
+                    <input type="checkbox" class="admin-settings-toggle__input" id="toggle-daily-email" name="dailyEmailSummary" />
+                    <span class="admin-settings-toggle__track" aria-hidden="true"></span>
+                  </span>
+                </label>
+              </div>
+            </article>
           </div>
-        </article>
+        </details>
       </div>
 
       <div class="admin-settings-footer">
-      <p id="device-settings-msg" class="admin-settings-msg admin-settings-msg--footer" hidden role="status"></p>
-      <button type="submit" class="admin-settings-save-btn" id="btn-device-settings-save">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-          <polyline points="17 21 17 13 7 13 7 21" />
-          <polyline points="7 3 7 8 15 8" />
-        </svg>
-        Salvar alterações
-      </button>
-    </div>
-  </form>
+        <p id="device-settings-msg" class="admin-settings-msg admin-settings-msg--footer" hidden role="status"></p>
+        <button type="submit" class="admin-settings-save-btn" id="btn-device-settings-save">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
+          Salvar alterações
+        </button>
+      </div>
+    </form>
   </div>
 </section>

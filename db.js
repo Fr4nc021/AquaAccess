@@ -462,6 +462,26 @@ function findPatientIdByCpf(cpf) {
   return row.id != null ? Number(row.id) : null;
 }
 
+/**
+ * Identificador enviado pelo XPE (Ações URL): numérico = ID do paciente no AquaAccess,
+ * ou 11 dígitos = CPF sem formatação.
+ */
+function findPatientIdForXpeBridge(userRef) {
+  const s = String(userRef || '').trim();
+  if (!s) return null;
+  const digits = s.replace(/\D/g, '');
+  if (digits.length === 11) {
+    const byCpf = findPatientIdByCpf(digits);
+    if (byCpf) return byCpf;
+  }
+  const n = parseInt(s, 10);
+  if (Number.isFinite(n) && n > 0) {
+    const p = getPatientById(n);
+    return p ? n : null;
+  }
+  return null;
+}
+
 function searchPatientsByName(query, limit = 15) {
   const lim = Math.min(50, Math.max(1, Number(limit) || 15));
   const q = String(query || '').trim();
@@ -816,6 +836,7 @@ function deleteExamById(examId) {
 
 /** Validade do exame em dias (regra de negócio). */
 const EXAM_VALIDITY_DAYS = 30;
+const DEFAULT_EXAM_ALLOWED_WEEKDAYS = [1, 2, 3, 4, 5];
 
 function formatIsoDateLocal(d) {
   const dt = d instanceof Date ? d : new Date(d);
@@ -830,6 +851,31 @@ function addDaysToIsoDate(isoDateStr, days) {
   const dt = new Date(y, mo - 1, da);
   dt.setDate(dt.getDate() + Number(days));
   return formatIsoDateLocal(dt);
+}
+
+function normalizeAllowedWeekdays(raw) {
+  if (!Array.isArray(raw)) return [...DEFAULT_EXAM_ALLOWED_WEEKDAYS];
+  const uniq = Array.from(
+    new Set(
+      raw
+        .map((v) => Number(v))
+        .filter((v) => Number.isInteger(v) && v >= 0 && v <= 6)
+    )
+  ).sort((a, b) => a - b);
+  return uniq.length ? uniq : [...DEFAULT_EXAM_ALLOWED_WEEKDAYS];
+}
+
+function alignIsoDateToAllowedWeekday(isoDateStr, allowedWeekdays) {
+  const weekdays = normalizeAllowedWeekdays(allowedWeekdays);
+  const [y, mo, da] = String(isoDateStr).split('-').map(Number);
+  const dt = new Date(y, mo - 1, da);
+  for (let i = 0; i < 7; i += 1) {
+    if (weekdays.includes(dt.getDay())) {
+      return formatIsoDateLocal(dt);
+    }
+    dt.setDate(dt.getDate() + 1);
+  }
+  return String(isoDateStr);
 }
 
 function deletePatientById(id) {
@@ -862,11 +908,11 @@ function removePatient(patientId) {
 }
 
 /**
- * Registra exame: data do exame (ou hoje) e validade = data + 30 dias.
- * Revalidação antes do fim dos 30 dias: exames ainda vigentes do mesmo paciente
+ * Registra exame: data do exame (ou hoje) e validade = data + X dias.
+ * Revalidação antes do fim da validade: exames ainda vigentes do mesmo paciente
  * passam a status "Substituído"; o novo registro é o período válido atual.
  */
-function createExam(patientId, examDateIso) {
+function createExam(patientId, examDateIso, options = {}) {
   const pid = Number(patientId);
   if (!Number.isFinite(pid) || pid <= 0) {
     return { ok: false, error: 'Paciente inválido.' };
@@ -879,7 +925,11 @@ function createExam(patientId, examDateIso) {
   if (!examDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(examDate))) {
     examDate = formatIsoDateLocal(new Date());
   }
-  const validUntil = addDaysToIsoDate(examDate, EXAM_VALIDITY_DAYS);
+  const rawValidityDays = Number.parseInt(String(options?.validityDays ?? EXAM_VALIDITY_DAYS), 10);
+  const validityDaysUsed =
+    Number.isFinite(rawValidityDays) && rawValidityDays >= 1 ? rawValidityDays : EXAM_VALIDITY_DAYS;
+  const targetDate = addDaysToIsoDate(examDate, validityDaysUsed);
+  const validUntil = alignIsoDateToAllowedWeekday(targetDate, options?.allowedWeekdays);
   const today = formatIsoDateLocal(new Date());
   try {
     db.run(
@@ -892,7 +942,7 @@ function createExam(patientId, examDateIso) {
       [pid, examDate, validUntil, 'Válido']
     );
     persist();
-    return { ok: true, examDate, validUntil };
+    return { ok: true, examDate, validUntil, validityDaysUsed };
   } catch (e) {
     return { ok: false, error: 'Não foi possível registrar o exame.' };
   }
@@ -1022,6 +1072,84 @@ function adminReportsRows(kind, periodStart, periodEnd) {
   return out;
 }
 
+const MONTH_SHORT_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+/** Contagem de exames registrados por mês (últimos N meses, base em exam_date ou created_at). */
+function adminDashboardMonthlyExams(monthCount = 6) {
+  const safeCount = Math.min(24, Math.max(1, Number(monthCount) || 6));
+  const today = new Date();
+  const buckets = [];
+  for (let i = safeCount - 1; i >= 0; i -= 1) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    buckets.push({
+      key: `${y}-${m}`,
+      label: MONTH_SHORT_PT[d.getMonth()],
+      count: 0,
+    });
+  }
+  const stmt = db.prepare(`
+    SELECT COALESCE(NULLIF(TRIM(exam_date), ''), substr(created_at, 1, 10)) AS d
+    FROM exams
+  `);
+  while (stmt.step()) {
+    const row = stmt.getAsObject();
+    const iso = String(row.d || '').trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) continue;
+    const key = iso.slice(0, 7);
+    const b = buckets.find((x) => x.key === key);
+    if (b) b.count += 1;
+  }
+  stmt.free();
+  return buckets.map(({ label, count }) => ({ label, count }));
+}
+
+/** Resumo para a visão geral do admin (dados do banco local). */
+function dashboardSnapshot() {
+  const overview = listPatientsOverview();
+  let examsValid = 0;
+  let examsExpiringWeek = 0;
+  let examsExpired = 0;
+  let noExam = 0;
+  let blocked = 0;
+
+  for (const row of overview) {
+    if (row.blocked) blocked += 1;
+    if (row.attention === 'sem_exame') {
+      noExam += 1;
+      continue;
+    }
+    if (row.attention === 'vencido') {
+      examsExpired += 1;
+      continue;
+    }
+    if (row.blocked) continue;
+    if (row.attention === 'valido') examsValid += 1;
+    else if (row.attention === 'vence_semana') examsExpiringWeek += 1;
+  }
+
+  const access = accessStatsToday();
+  const monthlyExams = adminDashboardMonthlyExams(6);
+  const local = getLocalDbStats();
+
+  const examsRecorded = monthlyExams.reduce((s, x) => s + x.count, 0);
+
+  return {
+    totalPatients: overview.length,
+    examsValid,
+    examsExpiringWeek,
+    examsExpired,
+    noExam,
+    blocked,
+    accessToday: access,
+    monthlyExams,
+    examsRecordedLastMonths: examsRecorded,
+    dbBytes: local.dbBytes,
+    pendingLocalPhotos: local.pendingPhotos,
+  };
+}
+
 /** Estatísticas do arquivo SQLite local (painel de sincronização). */
 function getLocalDbStats() {
   const q = (sql) => {
@@ -1071,6 +1199,7 @@ module.exports = {
   setPatientPhotoPath,
   getPatientById,
   findPatientIdByCpf,
+  findPatientIdForXpeBridge,
   searchPatientsByName,
   updatePatient,
   deletePatientById,
@@ -1088,4 +1217,5 @@ module.exports = {
   adminReportsSummary,
   adminReportsRows,
   getLocalDbStats,
+  dashboardSnapshot,
 };

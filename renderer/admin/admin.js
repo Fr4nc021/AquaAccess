@@ -66,21 +66,35 @@
   const LS_ADMIN_LAST_FULL_SYNC = 'clubAccessAdminLastFullSync';
 
   const DEFAULT_DEVICE_SETTINGS = {
-    deviceName: 'Intelbras FR-3000',
+    deviceName: 'Intelbras XPE 3200 PLUS IP',
     locationLabel: 'Catraca principal',
-    ip: '192.168.1.45',
-    firmware: '3.2.1',
+    ip: '',
+    firmware: '',
     clubDisplayName: 'AquaAccess',
     clubName: 'Clube Atlético Marítimo',
     systemName: 'AquaAccess',
     defaultExamValidityDays: 30,
-    devicePort: '8080',
+    examAllowedWeekdays: [1, 2, 3, 4, 5],
+    devicePort: '80',
     autoSync5Min: true,
     blockExpiredExams: true,
     notify5DaysBefore: true,
     notifyDeniedAccess: true,
     dailyEmailSummary: false,
+    colorTheme: 'dark',
   };
+
+  function normalizeExamAllowedWeekdays(raw) {
+    if (!Array.isArray(raw)) return [...DEFAULT_DEVICE_SETTINGS.examAllowedWeekdays];
+    const uniq = Array.from(
+      new Set(
+        raw
+          .map((v) => Number(v))
+          .filter((v) => Number.isInteger(v) && v >= 0 && v <= 6)
+      )
+    ).sort((a, b) => a - b);
+    return uniq.length ? uniq : [...DEFAULT_DEVICE_SETTINGS.examAllowedWeekdays];
+  }
 
   let pacientesCache = [];
   let pacientesFilter = 'todos';
@@ -259,23 +273,342 @@
     return `há ${d} d`;
   }
 
+  /** Retorna IPv4 normalizado (ex.: 192.168.0.67) ou null se inválido. */
+  function normalizeDeviceIpv4(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return null;
+    const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);
+    if (!m) return null;
+    const parts = [m[1], m[2], m[3], m[4]].map((x) => Number.parseInt(x, 10));
+    if (parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
+    return parts.join('.');
+  }
+
+  function normalizeDevicePort(raw) {
+    const n = Number.parseInt(String(raw || '').trim(), 10);
+    if (!Number.isInteger(n) || n < 1 || n > 65535) return null;
+    return n;
+  }
+
+  /** Parseia URL/IP do painel XPE → { ip, port, baseUrl } ou null. */
+  function parseDeviceUrlToIpPort(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return null;
+    let toParse = s;
+    if (!/^[a-z]+:\/\//i.test(toParse)) {
+      toParse = `http://${toParse}`;
+    }
+    try {
+      const u = new URL(toParse);
+      const ip = normalizeDeviceIpv4(u.hostname);
+      if (!ip) return null;
+      let port = Number.parseInt(u.port, 10);
+      if (!Number.isInteger(port) || port < 1) {
+        port = u.protocol === 'https:' ? 443 : 80;
+      }
+      const portPart = port === 80 || port === 443 ? '' : `:${port}`;
+      const baseUrl = `${u.protocol}//${ip}${portPart}`;
+      return { ip, port, baseUrl };
+    } catch {
+      const ip = normalizeDeviceIpv4(s);
+      if (!ip) return null;
+      return { ip, port: 80, baseUrl: `http://${ip}` };
+    }
+  }
+
+  function buildDeviceUrlFromIpPort(ip, port) {
+    const safeIp = normalizeDeviceIpv4(ip);
+    if (!safeIp) return '';
+    const p = normalizeDevicePort(port) ?? 80;
+    return p === 80 ? `http://${safeIp}` : `http://${safeIp}:${p}`;
+  }
+
+  /** Sincroniza field-xpe-device-url ↔ IP/porta (source: 'url' | 'ip'). */
+  function syncDeviceUrlAndIpFields(source) {
+    const urlEl = document.getElementById('field-xpe-device-url');
+    const ipEl = document.getElementById('field-device-ip');
+    const portEl = document.getElementById('field-device-port');
+    const baseEl = document.getElementById('field-xpe-open-door-base');
+    if (!urlEl || !ipEl || !portEl) return;
+
+    if (source === 'url') {
+      const parsed = parseDeviceUrlToIpPort(urlEl.value);
+      if (!parsed) return;
+      ipEl.value = parsed.ip;
+      portEl.value = String(parsed.port);
+      if (baseEl && !String(baseEl.value || '').trim()) {
+        baseEl.value = parsed.baseUrl;
+      }
+      return;
+    }
+
+    const built = buildDeviceUrlFromIpPort(ipEl.value, portEl.value);
+    if (built) {
+      urlEl.value = built;
+      if (baseEl && !String(baseEl.value || '').trim()) {
+        baseEl.value = built;
+      }
+    }
+  }
+
+  function syncOpenDoorCredsFromWebFields() {
+    const webUser = String(document.getElementById('field-xpe-web-user')?.value || '').trim();
+    const webPass = String(document.getElementById('field-xpe-web-password')?.value || '');
+    const ou = document.getElementById('field-xpe-open-door-user');
+    const op = document.getElementById('field-xpe-open-door-password');
+    if (ou) ou.value = webUser;
+    if (op) op.value = webPass;
+  }
+
+  function formatBytes(n) {
+    const x = Number(n) || 0;
+    if (x < 1024) return `${x} B`;
+    if (x < 1048576) return `${(x / 1024).toFixed(1)} KB`;
+    return `${(x / 1048576).toFixed(2)} MB`;
+  }
+
+  function donutBackground(valid, expiring, expired, blocked) {
+    const t = valid + expiring + expired + blocked;
+    if (t === 0) return 'conic-gradient(#334155 0deg 360deg)';
+    let a = 0;
+    const parts = [];
+    const add = (c, color) => {
+      if (c <= 0) return;
+      const deg = (c / t) * 360;
+      parts.push(`${color} ${a}deg ${a + deg}deg`);
+      a += deg;
+    };
+    add(valid, '#22c55e');
+    add(expiring, '#eab308');
+    add(expired, '#ef4444');
+    add(blocked, '#3b82f6');
+    return `conic-gradient(${parts.join(', ')})`;
+  }
+
+  /** Explica erros típicos de socket do Node (TCP ao leitor). */
+  function explainDeviceConnectionError(ip, port, rawErr) {
+    const raw = String(rawErr || '');
+    const bullets = [];
+    let title = 'Falha de rede com o leitor';
+    if (!ip || port == null) {
+      title = 'IP ou porta não configurados';
+      bullets.push('Abra Configurações e informe IPv4 com pontos e a porta indicada no equipamento.');
+      return { title, detail: bullets.map((b) => `• ${b}`).join('\n') };
+    }
+    if (/ECONNREFUSED/i.test(raw)) {
+      title = 'Conexão recusada nesta porta';
+      bullets.push(`O endereço ${ip}:${port} foi contactado, mas nada aceitou TCP nessa porta.`);
+      bullets.push(
+        'Ou a porta está errada, ou não há serviço escutando aí. No XPE 3200 PLUS IP a interface web costuma ser HTTP porta 80 (pode ser diferente do que o InControl mostra).'
+      );
+      bullets.push(`No PowerShell: Test-NetConnection -ComputerName ${ip} -Port ${port}`);
+      bullets.push('Consulte o manual: porta HTTP (ex.: 80/443) pode ser outra; firewall no PC ou no roteador pode bloquear.');
+    } else if (/ETIMEDOUT|esgotado/i.test(raw)) {
+      title = 'Tempo de conexão esgotado';
+      bullets.push('O IP pode estar errado, o leitor desligado, fora da mesma rede ou bloqueado por firewall.');
+      bullets.push(`Teste: ping ${ip} e depois Test-NetConnection -ComputerName ${ip} -Port ${port}.`);
+    } else if (/ENOTFOUND|getaddrinfo|EAI_AGAIN/i.test(raw)) {
+      title = 'Endereço não resolvido';
+      bullets.push('Confira se o IPv4 em Configurações está exatamente como na rede (ex.: 192.168.0.67).');
+    } else if (/EHOSTUNREACH|ENETUNREACH/i.test(raw)) {
+      title = 'Rede inacessível';
+      bullets.push('Conecte o PC na mesma rede do leitor ou libere rota/VLAN até o IP do equipamento.');
+    } else {
+      bullets.push(raw.trim() || 'Erro sem classificação automática.');
+      bullets.push(`Destino: ${ip}:${port}`);
+    }
+    return { title, detail: bullets.map((b) => `• ${b}`).join('\n') };
+  }
+
+  function extractTcpErrorFromCheck(full) {
+    const s = String(full || '');
+    const m = /(connect\s+[A-Z]+[^\n]*)/i.exec(s);
+    if (m) return m[1].trim();
+    return s.replace(/^Não foi possível conectar ao dispositivo\s*\([^)]+\)\.?\s*/i, '').trim() || s;
+  }
+
+  function alertDeviceConnectionFailure(ip, port, fullMessage) {
+    const msg = String(fullMessage || '');
+    if (/IP ou porta inválidos|IPv4 com pontos|192168067/i.test(msg)) {
+      alert(
+        'Configuração do leitor\n\n' +
+          msg +
+          '\n\nComo corrigir:\n' +
+          '• IPv4 com pontos: 192.168.0.67 (não use 192168067).\n' +
+          '• Porta: número entre 1 e 65535 (videoporteiro XPE 3200 PLUS IP: interface web costuma ser 80 — veja o manual).'
+      );
+      return;
+    }
+    const safeIp = ip != null ? ip : normalizeDeviceIpv4(loadDeviceSettings().ip);
+    const safePort = port != null ? port : normalizeDevicePort(loadDeviceSettings().devicePort);
+    const raw = extractTcpErrorFromCheck(msg);
+    const adv = explainDeviceConnectionError(safeIp, safePort, raw);
+    alert(`${adv.title}\n\n${adv.detail}\n\nDetalhe técnico: ${raw || '—'}`);
+  }
+
+  async function ensureDeviceOnline(settings, runtime) {
+    const ip = normalizeDeviceIpv4(settings.ip);
+    const port = normalizeDevicePort(settings.devicePort);
+    if (!ip || port == null) {
+      return {
+        ok: false,
+        ip: null,
+        port: null,
+        error:
+          'IP ou porta inválidos. O IP deve ser IPv4 com pontos (ex.: 192.168.0.67), não 192168067.',
+      };
+    }
+    const result = await window.clubAccess.deviceConnectivityCheck(ip, port, 2500);
+    if (!result?.ok) {
+      runtime.connected = false;
+      saveDeviceRuntime(runtime);
+      return {
+        ok: false,
+        ip,
+        port,
+        error: `Não foi possível conectar ao dispositivo (${ip}:${port}). ${result?.error || ''}`.trim(),
+      };
+    }
+    runtime.connected = true;
+    saveDeviceRuntime(runtime);
+    return { ok: true, ip, port };
+  }
+
+  async function buildXpeSyncPayload(patientId) {
+    const s = loadDeviceSettings();
+    const ipFromForm = normalizeDeviceIpv4(document.getElementById('field-device-ip')?.value);
+    const portFromForm = normalizeDevicePort(document.getElementById('field-device-port')?.value);
+    const ip = ipFromForm || normalizeDeviceIpv4(s.ip);
+    const port = portFromForm != null ? portFromForm : normalizeDevicePort(s.devicePort);
+    let bridge = null;
+    try {
+      bridge = await window.clubAccess.xpeBridgeGetSettings();
+    } catch {
+      bridge = null;
+    }
+
+    let username = String(document.getElementById('field-xpe-web-user')?.value || '').trim();
+    let password = String(document.getElementById('field-xpe-web-password')?.value || '');
+
+    if (!username && bridge?.openDoorUser) {
+      username = String(bridge.openDoorUser).trim();
+    }
+
+    if (!password && bridge?.hasOpenDoorPassword) {
+      password = '';
+    }
+
+    return {
+      patientId: Number(patientId),
+      ip: ip || '',
+      port: port != null ? port : 80,
+      username,
+      password,
+    };
+  }
+
+  async function runXpeSyncForPatient(patientId, patientName) {
+    const id = Number(patientId);
+    if (!Number.isFinite(id) || id < 1) {
+      alert('ID do paciente inválido.');
+      return { ok: false };
+    }
+
+    const settings = loadDeviceSettings();
+    const ip = normalizeDeviceIpv4(settings.ip);
+    if (!ip) {
+      alert('Configure o IP do XPE em Configurações antes de sincronizar.');
+      return { ok: false };
+    }
+
+    const label = patientName ? `${patientName} (ID ${id})` : `ID ${id}`;
+    const confirmed = window.confirm(
+      `Sincronizar no Intelbras XPE via Playwright?\n\nPaciente: ${label}\n\nUma janela do navegador será aberta no equipamento.`
+    );
+    if (!confirmed) return { ok: false, cancelled: true };
+
+    const payload = await buildXpeSyncPayload(id);
+    let result = null;
+    try {
+      result = await window.clubAccess.xpeSyncUser(payload);
+    } catch (e) {
+      result = { ok: false, error: String(e?.message || e) };
+    }
+
+    if (result?.ok) {
+      pushDeviceLog({
+        type: 'ok',
+        title: `Intelbras XPE — paciente ${id} cadastrado e confirmado na lista`,
+        actor: 'Playwright',
+      });
+      alert(
+        `Paciente ${label} enviado ao XPE.\n\nO ID ${id} foi encontrado na lista de usuários do equipamento.`
+      );
+    } else {
+      pushDeviceLog({
+        type: 'deny',
+        title: `Falha na sincronização XPE — paciente ${id}`,
+        actor: result?.error || 'Erro',
+      });
+      let msg = result?.error || 'Não foi possível sincronizar.';
+      if (result?.screenshot) {
+        msg += `\n\nScreenshot: ${result.screenshot}`;
+      }
+      alert(msg);
+    }
+
+    await refreshDeviceUI();
+    return result;
+  }
+
+  let deviceSettingsFileCache = null;
+
+  function mergeDeviceSettingsObject(o) {
+    const merged = { ...DEFAULT_DEVICE_SETTINGS, ...o };
+    if (merged.deviceName === 'Intelbras FR-3000') {
+      merged.deviceName = DEFAULT_DEVICE_SETTINGS.deviceName;
+    }
+    if (!merged.systemName && merged.clubDisplayName) {
+      merged.systemName = merged.clubDisplayName;
+    }
+    merged.examAllowedWeekdays = normalizeExamAllowedWeekdays(merged.examAllowedWeekdays);
+    merged.colorTheme = merged.colorTheme === 'light' ? 'light' : 'dark';
+    return merged;
+  }
+
   function loadDeviceSettings() {
+    if (deviceSettingsFileCache) {
+      return mergeDeviceSettingsObject(deviceSettingsFileCache);
+    }
     try {
       const raw = localStorage.getItem(DEVICE_SETTINGS_KEY);
       if (!raw) return { ...DEFAULT_DEVICE_SETTINGS };
-      const o = JSON.parse(raw);
-      const merged = { ...DEFAULT_DEVICE_SETTINGS, ...o };
-      if (!merged.systemName && merged.clubDisplayName) {
-        merged.systemName = merged.clubDisplayName;
-      }
-      return merged;
+      return mergeDeviceSettingsObject(JSON.parse(raw));
     } catch {
       return { ...DEFAULT_DEVICE_SETTINGS };
     }
   }
 
+  async function hydrateDeviceSettingsFromMain() {
+    try {
+      const r = await window.clubAccess.deviceSettingsGet();
+      if (r?.ok && r.settings) {
+        deviceSettingsFileCache = r.settings;
+        const merged = mergeDeviceSettingsObject(r.settings);
+        localStorage.setItem(DEVICE_SETTINGS_KEY, JSON.stringify(merged));
+        return merged;
+      }
+    } catch {
+      /* ignore */
+    }
+    return loadDeviceSettings();
+  }
+
   function saveDeviceSettings(s) {
-    localStorage.setItem(DEVICE_SETTINGS_KEY, JSON.stringify(s));
+    const merged = mergeDeviceSettingsObject(s);
+    deviceSettingsFileCache = merged;
+    localStorage.setItem(DEVICE_SETTINGS_KEY, JSON.stringify(merged));
+    void window.clubAccess.deviceSettingsSet(merged).catch(() => {});
   }
 
   function loadDeviceRuntime() {
@@ -406,6 +739,377 @@
     const sidebarEl = document.getElementById('sidebar-system-name');
     if (badgeEl) badgeEl.textContent = name;
     if (sidebarEl) sidebarEl.textContent = name;
+    const theme = s.colorTheme === 'light' ? 'light' : 'dark';
+    if (window.ClubAccessTheme?.applyColorTheme) {
+      window.ClubAccessTheme.applyColorTheme(theme);
+    }
+  }
+
+  let xpeWizardLanIp = null;
+
+  function getPcLanIpFromField() {
+    const raw = String(document.getElementById('field-pc-lan-ip')?.value || '').trim();
+    const norm = normalizeDeviceIpv4(raw);
+    return norm || xpeWizardLanIp || null;
+  }
+
+  function updateXpeBridgeUrlHint(lanIpOverride, exampleOverride) {
+    const portEl = document.getElementById('field-xpe-bridge-port');
+    const pathEl = document.getElementById('field-xpe-bridge-path');
+    const port = String(portEl?.value || '37891').trim() || '37891';
+    let pth = String(pathEl?.value || '/intelbras/xpe').trim() || '/intelbras/xpe';
+    if (!pth.startsWith('/')) pth = `/${pth}`;
+    const lan = lanIpOverride || getPcLanIpFromField() || xpeWizardLanIp || null;
+    const example =
+      exampleOverride ||
+      (lan ? `http://${lan}:${port}${pth}?userId=123` : '—');
+    const lanHint = document.getElementById('xpe-bridge-lan-hint');
+    const exEl = document.getElementById('xpe-bridge-url-example');
+    if (lanHint) lanHint.textContent = lan || 'defina o IP do PC acima';
+    if (exEl) exEl.textContent = example || (lan ? `http://${lan}:${port}${pth}?userId=123` : '—');
+    const actionField = document.getElementById('field-xpe-action-url');
+    if (actionField && !actionField.dataset.userEdited) {
+      const base = lan ? `http://${lan}:${port}${pth}` : '';
+      if (base) actionField.value = base;
+    }
+  }
+
+  function setXpeWizardStatus(message, kind = 'ok') {
+    const el = document.getElementById('xpe-wizard-status');
+    if (!el) return;
+    if (!message) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    el.hidden = false;
+    el.textContent = message;
+    el.classList.remove('admin-xpe-wizard__status--warn', 'admin-xpe-wizard__status--err');
+    if (kind === 'warn') el.classList.add('admin-xpe-wizard__status--warn');
+    if (kind === 'err') el.classList.add('admin-xpe-wizard__status--err');
+  }
+
+  function setXpeChecklistState(key, state) {
+    const el = document.getElementById(`xpe-check-${key}`);
+    if (!el) return;
+    el.classList.remove('admin-xpe-checklist__item--done', 'admin-xpe-checklist__item--pending');
+    if (state === 'done') el.classList.add('admin-xpe-checklist__item--done');
+    if (state === 'pending') el.classList.add('admin-xpe-checklist__item--pending');
+  }
+
+  function updateXpeSetupChecklist(data) {
+    const actionUrl = String(document.getElementById('field-xpe-action-url')?.value || '').trim();
+    const deviceUrl = String(document.getElementById('field-xpe-device-url')?.value || '').trim();
+    const ipOk = Boolean(
+      normalizeDeviceIpv4(document.getElementById('field-device-ip')?.value) ||
+        parseDeviceUrlToIpPort(deviceUrl)?.ip
+    );
+    const portOk =
+      normalizeDevicePort(document.getElementById('field-device-port')?.value) != null ||
+      Boolean(parseDeviceUrlToIpPort(deviceUrl));
+    const webUser = String(document.getElementById('field-xpe-web-user')?.value || '').trim();
+    const lanOk = Boolean(getPcLanIpFromField());
+    const bridgeOk = Boolean(data?.bridgeStatus?.enabled && data?.bridgeStatus?.listening);
+    const probeOk = data?.probe?.ok === true;
+
+    setXpeChecklistState('device', ipOk && portOk ? 'done' : ipOk || deviceUrl ? 'pending' : '');
+    setXpeChecklistState('creds', webUser ? 'done' : '');
+    setXpeChecklistState('lan', lanOk ? 'done' : '');
+    setXpeChecklistState(
+      'detect',
+      bridgeOk || probeOk ? 'done' : ipOk || deviceUrl ? 'pending' : ''
+    );
+    setXpeChecklistState('paste', actionUrl ? 'pending' : '');
+    setXpeChecklistState('users', bridgeOk || probeOk || actionUrl ? 'pending' : '');
+    setXpeChecklistState('firewall', bridgeOk ? 'pending' : '');
+  }
+
+  function applyXpeDiscoverToWizard(data) {
+    if (!data?.ok) return;
+    xpeWizardLanIp =
+      data.pcLanIp ||
+      data.network?.preferredLanIp ||
+      data.bridge?.preferredLanIp ||
+      null;
+    const lanField = document.getElementById('field-pc-lan-ip');
+    const lanExtra = document.getElementById('xpe-wizard-lan-extra');
+    if (lanField) {
+      const cur = String(lanField.value || '').trim();
+      if (!cur && xpeWizardLanIp) {
+        lanField.value = xpeWizardLanIp;
+      } else if (!cur) {
+        lanField.placeholder = 'Não detectado — digite o IP deste PC na rede';
+      }
+    }
+    if (lanExtra && Array.isArray(data.network?.addresses) && data.network.addresses.length > 0) {
+      const all = data.network.addresses.map((a) => a.ip).join(', ');
+      const auto = data.network?.autoDetectedLanIp;
+      let hint = `Interfaces neste PC: ${all}`;
+      if (auto && auto !== xpeWizardLanIp) {
+        hint += ` · Sugestão automática (mesma rede do Intelbras): ${xpeWizardLanIp || auto}`;
+      }
+      lanExtra.textContent = hint;
+      lanExtra.hidden = false;
+    } else if (lanExtra) {
+      lanExtra.hidden = true;
+      lanExtra.textContent = '';
+    }
+
+    const urlField = document.getElementById('field-xpe-device-url');
+    if (urlField && !urlField.value.trim()) {
+      const fromInt = data.integration?.deviceUrl;
+      const fromDev = data.deviceSettings?.ip
+        ? `http://${data.deviceSettings.ip}:${data.deviceSettings.devicePort || 80}`
+        : '';
+      urlField.value = fromInt || fromDev || '';
+    }
+    if (urlField?.value.trim()) {
+      syncDeviceUrlAndIpFields('url');
+    } else if (data.deviceSettings?.ip) {
+      const ipEl = document.getElementById('field-device-ip');
+      const portEl = document.getElementById('field-device-port');
+      if (ipEl && !ipEl.value.trim()) ipEl.value = data.deviceSettings.ip;
+      if (portEl && !portEl.value.trim()) {
+        portEl.value = String(data.deviceSettings.devicePort || '80');
+      }
+      syncDeviceUrlAndIpFields('ip');
+    }
+
+    const webUser = document.getElementById('field-xpe-web-user');
+    if (webUser && !webUser.value.trim() && data.integration?.deviceWebUser) {
+      webUser.value = data.integration.deviceWebUser;
+    }
+
+    const actionUrl = data.actionUrlLogAccess || '';
+    const actionField = document.getElementById('field-xpe-action-url');
+    if (actionField && actionUrl) {
+      actionField.value = actionUrl;
+      delete actionField.dataset.userEdited;
+    }
+
+    updateXpeBridgeUrlHint(xpeWizardLanIp, data.actionUrlExample);
+
+    let statusMsg = '';
+    if (data.probe?.summary) {
+      statusMsg = data.probe.summary;
+    }
+    if (data.bridgeStatus?.enabled && data.bridgeStatus?.listening) {
+      statusMsg = statusMsg
+        ? `${statusMsg} Bridge HTTP ativo na porta ${data.bridgeStatus.port}.`
+        : `Bridge HTTP ativo na porta ${data.bridgeStatus.port}.`;
+    } else if (data.bridgeStatus?.enabled && !data.bridgeStatus?.listening) {
+      statusMsg = statusMsg
+        ? `${statusMsg} Bridge habilitado mas parado: ${data.bridgeStatus.lastStartError || 'verifique porta/firewall.'}`
+        : `Bridge habilitado mas parado: ${data.bridgeStatus.lastStartError || 'verifique porta/firewall.'}`;
+      setXpeWizardStatus(statusMsg, 'warn');
+      updateXpeSetupChecklist(data);
+      return;
+    }
+    if (statusMsg) {
+      setXpeWizardStatus(statusMsg, data.probe?.ok === false ? 'warn' : 'ok');
+    } else {
+      setXpeWizardStatus('Informe a URL do Intelbras e clique em Detectar e configurar.', 'warn');
+    }
+    updateXpeSetupChecklist(data);
+  }
+
+  async function refreshXpeWizard() {
+    try {
+      const deviceUrl = String(document.getElementById('field-xpe-device-url')?.value || '').trim();
+      const data = await window.clubAccess.xpeSetupDiscover(
+        deviceUrl ? { deviceUrl } : {}
+      );
+      applyXpeDiscoverToWizard(data);
+    } catch (e) {
+      setXpeWizardStatus(String(e?.message || e), 'err');
+    }
+  }
+
+  async function runXpeSetupApply() {
+    let url = String(document.getElementById('field-xpe-device-url')?.value || '').trim();
+    if (!url) {
+      syncDeviceUrlAndIpFields('ip');
+      url = String(document.getElementById('field-xpe-device-url')?.value || '').trim();
+    }
+    if (!url) {
+      setXpeWizardStatus('Informe a URL ou o IP do painel Intelbras (ex.: http://192.168.0.67).', 'err');
+      return;
+    }
+    syncDeviceUrlAndIpFields('url');
+    const btn = document.getElementById('btn-xpe-setup-apply');
+    if (btn) btn.disabled = true;
+    setXpeWizardStatus('Detectando rede e testando o equipamento…', 'warn');
+    try {
+      const bridgePort = Number.parseInt(
+        String(document.getElementById('field-xpe-bridge-port')?.value || '37891'),
+        10
+      );
+      const bridgePath = String(
+        document.getElementById('field-xpe-bridge-path')?.value || '/intelbras/xpe'
+      ).trim();
+      const r = await window.clubAccess.xpeSetupApply({
+        deviceUrl: url,
+        webUser: String(document.getElementById('field-xpe-web-user')?.value || '').trim(),
+        webPassword: String(document.getElementById('field-xpe-web-password')?.value || ''),
+        bridgePort: Number.isFinite(bridgePort) ? bridgePort : undefined,
+        bridgePath: bridgePath || undefined,
+        lanIp: getPcLanIpFromField() || undefined,
+      });
+      if (!r?.ok) {
+        setXpeWizardStatus(r?.error || 'Falha na configuração.', 'err');
+        return;
+      }
+
+      if (r.deviceSettings?.ip) {
+        const prev = loadDeviceSettings();
+        saveDeviceSettings({
+          ...prev,
+          ip: r.deviceSettings.ip,
+          devicePort: String(r.deviceSettings.devicePort || '80'),
+        });
+      }
+
+      const ipEl = document.getElementById('field-device-ip');
+      const portEl = document.getElementById('field-device-port');
+      if (ipEl && r.deviceSettings?.ip) ipEl.value = r.deviceSettings.ip;
+      if (portEl && r.deviceSettings?.devicePort) portEl.value = r.deviceSettings.devicePort;
+      syncDeviceUrlAndIpFields('ip');
+
+      const baseEl = document.getElementById('field-xpe-open-door-base');
+      if (baseEl && r.bridge?.openDoorBaseUrl) {
+        baseEl.value = r.bridge.openDoorBaseUrl;
+      } else if (baseEl && r.deviceSettings?.ip) {
+        baseEl.value = buildDeviceUrlFromIpPort(
+          r.deviceSettings.ip,
+          r.deviceSettings.devicePort
+        );
+      }
+
+      await fillXpeBridgeFromServer();
+
+      const lanField = document.getElementById('field-pc-lan-ip');
+      if (lanField && (r.pcLanIp || r.plan?.preferredLanIp)) {
+        lanField.value = r.pcLanIp || r.plan.preferredLanIp;
+        xpeWizardLanIp = lanField.value;
+      }
+
+      const actionField = document.getElementById('field-xpe-action-url');
+      if (actionField && r.actionUrlLogAccess) {
+        actionField.value = r.actionUrlLogAccess;
+        delete actionField.dataset.userEdited;
+      }
+
+      const missingEl = document.getElementById('xpe-wizard-missing');
+      if (missingEl && Array.isArray(r.missing) && r.missing.length) {
+        missingEl.hidden = false;
+        missingEl.textContent = `Ainda necessário: ${r.missing.join(' · ')}`;
+      } else if (missingEl) {
+        missingEl.hidden = true;
+      }
+
+      let msg = r.probe?.summary || 'Configuração aplicada.';
+      if (r.bridge?.listening) {
+        msg += ` Bridge na porta ${r.bridge.port}. Cole a URL em Log de Acesso no Intelbras.`;
+      } else if (r.bridge?.bridgeStartError) {
+        msg += ` Atenção: ${r.bridge.bridgeStartError}`;
+      }
+      setXpeWizardStatus(msg, r.bridge?.listening ? 'ok' : 'warn');
+      updateXpeSetupChecklist({
+        probe: r.probe,
+        bridgeStatus: {
+          enabled: true,
+          listening: Boolean(r.bridge?.listening),
+          port: r.bridge?.port,
+          lastStartError: r.bridge?.bridgeStartError,
+        },
+        bridge: r.bridge,
+      });
+
+      await refreshXpeWizard();
+      if (activePage === 'dispositivo') {
+        void refreshDeviceUI();
+      }
+    } catch (e) {
+      setXpeWizardStatus(String(e?.message || e), 'err');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function fillXpeBridgeFromServer() {
+    try {
+      const s = await window.clubAccess.xpeBridgeGetSettings();
+      if (!s?.ok) return;
+      const en = document.getElementById('toggle-xpe-bridge-enabled');
+      const port = document.getElementById('field-xpe-bridge-port');
+      const pth = document.getElementById('field-xpe-bridge-path');
+      const sec = document.getElementById('field-xpe-bridge-secret');
+      const odEn = document.getElementById('toggle-xpe-open-door');
+      const base = document.getElementById('field-xpe-open-door-base');
+      const ou = document.getElementById('field-xpe-open-door-user');
+      const op = document.getElementById('field-xpe-open-door-password');
+      const dn = document.getElementById('field-xpe-open-door-num');
+      if (en) en.checked = Boolean(s.enabled);
+      if (port) port.value = String(s.port ?? 37891);
+      if (pth) pth.value = String(s.path || '/intelbras/xpe');
+      if (sec) {
+        sec.value = '';
+        sec.placeholder = s.hasSharedSecret
+          ? '(mantido — digite para trocar)'
+          : 'Deixe em branco se o XPE não enviar token';
+      }
+      if (odEn) odEn.checked = Boolean(s.openDoorWhenGranted);
+      if (base) base.value = String(s.openDoorBaseUrl || '');
+      if (ou) ou.value = String(s.openDoorUser || '');
+      if (op) op.value = '';
+      if (dn) dn.value = String(s.openDoorNum || '1');
+      const webUser = document.getElementById('field-xpe-web-user');
+      if (webUser && s.openDoorUser) {
+        webUser.value = String(s.openDoorUser);
+      }
+      const webPass = document.getElementById('field-xpe-web-password');
+      if (webPass) {
+        webPass.value = '';
+        webPass.placeholder = s.hasOpenDoorPassword
+          ? '(senha já salva — digite só se quiser trocar)'
+          : 'Digite a senha e clique em Salvar';
+      }
+      const passStatus = document.getElementById('xpe-web-password-status');
+      if (passStatus) {
+        if (s.hasOpenDoorPassword) {
+          passStatus.hidden = false;
+          passStatus.textContent = 'Senha web gravada neste PC (não é exibida por segurança).';
+        } else {
+          passStatus.hidden = false;
+          passStatus.textContent = 'Nenhuma senha salva ainda — preencha e clique em Salvar alterações.';
+        }
+      }
+      const logChk = document.getElementById('toggle-xpe-bridge-log-inbound');
+      if (logChk) logChk.checked = s.logInboundRequests !== false;
+      try {
+        const lp = await window.clubAccess.xpeBridgeInboundLogPath();
+        const hint = document.getElementById('xpe-inbound-log-path-hint');
+        if (hint && lp?.ok && lp.path) hint.textContent = lp.path;
+      } catch {
+        /* ignore */
+      }
+      xpeWizardLanIp = s.pcLanIp || s.preferredLanIp || s.detectedLanIp || xpeWizardLanIp;
+      const lanField = document.getElementById('field-pc-lan-ip');
+      if (lanField && !lanField.value.trim() && xpeWizardLanIp) {
+        lanField.value = xpeWizardLanIp;
+      }
+      updateXpeBridgeUrlHint(xpeWizardLanIp, s.actionUrlExample);
+      updateXpeSetupChecklist({
+        bridgeStatus: {
+          enabled: s.enabled,
+          listening: undefined,
+          port: s.port,
+        },
+        bridge: s,
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   function fillDeviceSettingsForm() {
@@ -413,6 +1117,8 @@
     const clubName = document.getElementById('field-club-name');
     const systemName = document.getElementById('field-system-name');
     const validityDays = document.getElementById('field-exam-validity-days');
+    const deviceName = document.getElementById('field-device-name');
+    const locationLabel = document.getElementById('field-location-label');
     const ip = document.getElementById('field-device-ip');
     const port = document.getElementById('field-device-port');
     const sync = document.getElementById('toggle-auto-sync');
@@ -420,16 +1126,33 @@
     const n5 = document.getElementById('toggle-notify-5days');
     const denied = document.getElementById('toggle-notify-denied');
     const daily = document.getElementById('toggle-daily-email');
+    const weekdayChecks = document.querySelectorAll('input[name="examAllowedWeekdays"]');
     if (clubName) clubName.value = s.clubName ?? '';
     if (systemName) systemName.value = s.systemName ?? '';
+    if (deviceName) deviceName.value = s.deviceName ?? DEFAULT_DEVICE_SETTINGS.deviceName;
+    if (locationLabel) locationLabel.value = s.locationLabel ?? DEFAULT_DEVICE_SETTINGS.locationLabel;
     if (validityDays) validityDays.value = String(s.defaultExamValidityDays ?? DEFAULT_DEVICE_SETTINGS.defaultExamValidityDays);
     if (ip) ip.value = s.ip || '';
     if (port) port.value = s.devicePort ?? '';
+    if (s.ip) {
+      const urlEl = document.getElementById('field-xpe-device-url');
+      if (urlEl && !urlEl.value.trim()) {
+        urlEl.value = buildDeviceUrlFromIpPort(s.ip, s.devicePort);
+      }
+    }
     if (sync) sync.checked = Boolean(s.autoSync5Min ?? DEFAULT_DEVICE_SETTINGS.autoSync5Min);
     if (blockExp) blockExp.checked = Boolean(s.blockExpiredExams ?? DEFAULT_DEVICE_SETTINGS.blockExpiredExams);
     if (n5) n5.checked = Boolean(s.notify5DaysBefore ?? DEFAULT_DEVICE_SETTINGS.notify5DaysBefore);
     if (denied) denied.checked = Boolean(s.notifyDeniedAccess ?? DEFAULT_DEVICE_SETTINGS.notifyDeniedAccess);
     if (daily) daily.checked = Boolean(s.dailyEmailSummary ?? DEFAULT_DEVICE_SETTINGS.dailyEmailSummary);
+    weekdayChecks.forEach((el) => {
+      const val = Number(el.value);
+      el.checked = Array.isArray(s.examAllowedWeekdays) && s.examAllowedWeekdays.includes(val);
+    });
+    const theme = s.colorTheme === 'light' ? 'light' : 'dark';
+    document.querySelectorAll('input[name="colorTheme"]').forEach((el) => {
+      el.checked = el.value === theme;
+    });
   }
 
   async function refreshDeviceUI() {
@@ -475,17 +1198,212 @@
     if (subSync) {
       subSync.textContent =
         patientTotal > 0
-          ? `Enviar ${patientTotal} cadastro${patientTotal === 1 ? '' : 's'}`
-          : 'Nenhum cadastro para enviar';
+          ? `Exportar ${patientTotal} paciente(s) (fotos + manifesto CSV)`
+          : 'Nenhum paciente cadastrado — exportação gera só o manifesto';
     }
     if (subPhotos) {
-      subPhotos.textContent =
-        pendingVal > 0
-          ? `${pendingVal} foto${pendingVal === 1 ? '' : 's'} aguardando`
-          : 'Nenhuma foto na fila';
+      subPhotos.textContent = 'Abrir última pasta de exportação';
+    }
+
+    const bridgeEl = document.getElementById('device-bridge-status');
+    if (bridgeEl) {
+      try {
+        const st = await window.clubAccess.xpeBridgeGetStatus();
+        if (st?.ok && st.enabled && st.listening) {
+          bridgeEl.textContent = `Bridge HTTP ativo — porta ${st.port} (path ${st.path}).`;
+        } else if (st?.ok && st.enabled && !st.listening) {
+          bridgeEl.textContent = `Bridge habilitado mas parado: ${st.lastStartError || 'verifique a porta e o firewall.'}`;
+        } else {
+          bridgeEl.textContent = 'Bridge HTTP desligado — ative em Configurações para receber Log de Acesso do XPE.';
+        }
+      } catch {
+        bridgeEl.textContent = 'Bridge HTTP: não foi possível obter o status.';
+      }
     }
 
     renderDeviceLogs();
+  }
+
+  async function refreshDashboard() {
+    const headDesc = document.getElementById('dash-head-desc');
+    const monthlyWrap = document.getElementById('dash-monthly-chart');
+    const monthlyEmpty = document.getElementById('dash-monthly-empty');
+    const chartSummary = document.getElementById('dash-chart-summary');
+    const donutEl = document.getElementById('dash-donut');
+    const extraMeta = document.getElementById('dash-extra-meta');
+
+    const setMeta = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text || '';
+    };
+
+    const setVal = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text != null ? String(text) : '—';
+    };
+
+    let snap = null;
+    try {
+      const res = await window.clubAccess.dashboardSnapshot();
+      if (res?.ok && res.data) snap = res.data;
+    } catch {
+      snap = null;
+    }
+
+    if (!snap) {
+      if (headDesc) headDesc.textContent = 'Não foi possível carregar os dados do painel.';
+      return;
+    }
+
+    if (headDesc) {
+      headDesc.textContent = 'Dados do banco local e teste de alcance do leitor (TCP) na rede';
+    }
+
+    setVal('dash-stat-patients', snap.totalPatients);
+    setMeta(
+      'dash-stat-patients-meta',
+      snap.totalPatients === 0
+        ? 'Nenhum paciente cadastrado ainda.'
+        : snap.noExam > 0
+          ? `Sem exame vigente: ${snap.noExam}`
+          : 'Todos os pacientes têm situação de exame definida (local)'
+    );
+
+    setVal('dash-stat-valid', snap.examsValid);
+    setMeta(
+      'dash-stat-valid-meta',
+      snap.examsExpiringWeek > 0
+        ? `Com vencimento nesta semana: ${snap.examsExpiringWeek}`
+        : 'Nenhum vencendo nesta semana'
+    );
+
+    setVal('dash-stat-expired', snap.examsExpired);
+    setMeta('dash-stat-expired-meta', 'Exame vigente vencido (status no cadastro)');
+
+    const acc = snap.accessToday || { total: 0, granted: 0, denied: 0 };
+    setVal('dash-stat-access', acc.total);
+    setMeta('dash-stat-access-meta', `${acc.granted} liberados · ${acc.denied} negados (hoje)`);
+
+    let appVer = '';
+    try {
+      appVer = (await window.clubAccess.getAppVersion()) || '';
+    } catch {
+      appVer = '';
+    }
+    setVal('dash-stat-system', 'Operacional');
+    setMeta(
+      'dash-stat-system-meta',
+      `${appVer ? `App v${appVer} · ` : ''}Banco ${formatBytes(snap.dbBytes)}${
+        snap.pendingLocalPhotos > 0 ? ` · ${snap.pendingLocalPhotos} cadastro(s) sem foto` : ''
+      }`
+    );
+
+    const validL = document.getElementById('dash-legend-valid');
+    const expL = document.getElementById('dash-legend-expiring');
+    const exdL = document.getElementById('dash-legend-expired');
+    const blkL = document.getElementById('dash-legend-blocked');
+    if (validL) validL.textContent = String(snap.examsValid);
+    if (expL) expL.textContent = String(snap.examsExpiringWeek);
+    if (exdL) exdL.textContent = String(snap.examsExpired);
+    if (blkL) blkL.textContent = String(snap.blocked);
+
+    if (donutEl) {
+      donutEl.style.background = donutBackground(
+        snap.examsValid,
+        snap.examsExpiringWeek,
+        snap.examsExpired,
+        snap.blocked
+      );
+      donutEl.setAttribute(
+        'aria-label',
+        `Válidos ${snap.examsValid}, vencendo ${snap.examsExpiringWeek}, vencidos ${snap.examsExpired}, bloqueados ${snap.blocked}`
+      );
+    }
+
+    if (extraMeta) {
+      const parts = [];
+      if (snap.noExam > 0) parts.push(`${snap.noExam} paciente(s) sem exame vigente.`);
+      parts.push(
+        'O cartão “Leitor facial (rede)” testa TCP. Fotos/CSV: Dispositivo facial → Exportar usuários. Regras de exame/bloqueio: bridge HTTP (Configurações) quando o XPE envia Log de Acesso.'
+      );
+      extraMeta.textContent = parts.join(' ');
+    }
+
+    const months = Array.isArray(snap.monthlyExams) ? snap.monthlyExams : [];
+    const maxC = Math.max(1, ...months.map((m) => m.count));
+    if (chartSummary) {
+      const sum = months.reduce((s, m) => s + m.count, 0);
+      chartSummary.textContent = `${sum} exame(s) nos últimos ${months.length} meses`;
+    }
+    if (monthlyWrap) {
+      monthlyWrap.innerHTML = '';
+      let totalM = 0;
+      for (const m of months) {
+        totalM += m.count;
+        const col = document.createElement('div');
+        col.className = 'admin-dash-monthly__col';
+        const h = Math.round((m.count / maxC) * 130);
+        col.innerHTML = `
+          <div class="admin-dash-monthly__bar-wrap">
+            <div class="admin-dash-monthly__bar" style="height:${Math.max(4, h)}px" title="${m.count} exames"></div>
+          </div>
+          <span class="admin-dash-monthly__count">${m.count}</span>
+          <span class="admin-dash-monthly__label">${escapeHtml(m.label)}</span>
+        `;
+        monthlyWrap.appendChild(col);
+      }
+      if (monthlyEmpty) monthlyEmpty.hidden = totalM > 0;
+    }
+
+    const settings = loadDeviceSettings();
+    const devIp = normalizeDeviceIpv4(settings.ip);
+    const devPort = normalizeDevicePort(settings.devicePort);
+    const deviceCard = document.getElementById('dash-device-card');
+    const deviceVal = document.getElementById('dash-stat-device');
+    const deviceMeta = document.getElementById('dash-stat-device-meta');
+    const pill = document.getElementById('topbar-reader-pill');
+    const pillLabel = document.getElementById('topbar-reader-label');
+
+    deviceCard?.classList.remove('admin-stat-card--device-ok', 'admin-stat-card--device-bad', 'admin-stat-card--device-warn');
+    pill?.classList.remove('admin-status-pill--ok', 'admin-status-pill--bad', 'admin-status-pill--warn', 'admin-status-pill--neutral');
+
+    if (!devIp || devPort == null) {
+      setVal('dash-stat-device', 'Não configurado');
+      if (deviceMeta) {
+        deviceMeta.textContent =
+          'Defina IP (IPv4 com pontos) e porta em Configurações. O teste não foi executado.';
+      }
+      deviceCard?.classList.add('admin-stat-card--device-warn');
+      pill?.classList.add('admin-status-pill--warn');
+      if (pillLabel) pillLabel.textContent = 'Leitor: configure IP';
+      return;
+    }
+
+    let probe = { ok: false, error: '' };
+    try {
+      probe = await window.clubAccess.deviceConnectivityCheck(devIp, devPort, 2500);
+    } catch (e) {
+      probe = { ok: false, error: String(e?.message || e) };
+    }
+
+    if (probe.ok) {
+      setVal('dash-stat-device', 'Alcançável');
+      if (deviceMeta) {
+        deviceMeta.textContent = `TCP OK em ${devIp}:${devPort}. Isto não garante envio de fotos ao leitor; só confirma que a porta aceita conexão.`;
+      }
+      deviceCard?.classList.add('admin-stat-card--device-ok');
+      pill?.classList.add('admin-status-pill--ok');
+      if (pillLabel) pillLabel.textContent = `Leitor: OK · ${devPort}`;
+    } else {
+      setVal('dash-stat-device', 'Sem resposta');
+      const adv = explainDeviceConnectionError(devIp, devPort, extractTcpErrorFromCheck(probe.error));
+      if (deviceMeta) {
+        deviceMeta.textContent = `${adv.title}. ${probe.error || ''}`.trim();
+      }
+      deviceCard?.classList.add('admin-stat-card--device-bad');
+      pill?.classList.add('admin-status-pill--bad');
+      if (pillLabel) pillLabel.textContent = 'Leitor: sem resposta';
+    }
   }
 
   async function handleDeviceAction(action) {
@@ -503,23 +1421,30 @@
           actor: settings.deviceName || 'Leitor',
         });
       } else {
-        runtime.connected = true;
-        saveDeviceRuntime(runtime);
+        const check = await ensureDeviceOnline(settings, runtime);
+        if (!check.ok) {
+          pushDeviceLog({
+            type: 'deny',
+            title: 'Falha ao conectar no dispositivo',
+            actor: check.error || 'Sem resposta do dispositivo',
+          });
+          await refreshDeviceUI();
+          alertDeviceConnectionFailure(check.ip ?? null, check.port ?? null, check.error);
+          void refreshDashboard();
+          return;
+        }
         pushDeviceLog({
           type: 'ok',
-          title: 'Conexão estabelecida',
+          title: `Conexão estabelecida em ${check.ip}:${check.port}`,
           actor: settings.deviceName || 'Leitor',
         });
       }
       await refreshDeviceUI();
+      void refreshDashboard();
       return;
     }
 
     if (action === 'sync') {
-      if (!runtime.connected) {
-        alert('Conecte o dispositivo antes de sincronizar.');
-        return;
-      }
       let rows = [];
       try {
         rows = (await window.clubAccess.patientsListOverview()) || [];
@@ -528,37 +1453,76 @@
       }
       const list = Array.isArray(rows) ? rows : [];
       const n = list.length;
-      const withPhoto = list.filter((r) => r.photo_path && String(r.photo_path).trim()).length;
+      let exp = null;
+      try {
+        exp = await window.clubAccess.xpeExportUserPack();
+      } catch (e) {
+        exp = { ok: false, error: String(e?.message || e) };
+      }
+      if (!exp?.ok) {
+        alert(exp?.error || 'Não foi possível gerar a pasta de exportação para o XPE.');
+        await refreshDeviceUI();
+        return;
+      }
       runtime.lastSyncAt = new Date().toISOString();
-      runtime.lastSyncedCount = n;
-      runtime.pendingPhotos = withPhoto;
+      runtime.lastSyncedCount = exp.patientCount != null ? exp.patientCount : n;
+      runtime.pendingPhotos = Math.max(0, (exp.patientCount || n) - (exp.photosCopied || 0));
       saveDeviceRuntime(runtime);
       pushDeviceLog({
         type: 'info',
-        title: `Sincronização concluída — ${n} usuário${n === 1 ? '' : 's'}`,
+        title: `Exportação XPE — ${exp.photosCopied ?? 0} foto(s), ${exp.patientCount ?? n} paciente(s) → pasta no PC`,
         actor: 'Sistema',
       });
       await refreshDeviceUI();
+      void refreshDashboard();
+      const open = window.confirm(
+        `Exportação salva em:\n${exp.folder}\n\nAbrir esta pasta no Explorador de Arquivos?`
+      );
+      if (open) {
+        try {
+          await window.clubAccess.xpeExportOpenLastFolder();
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
+
+    if (action === 'xpe-sync') {
+      const rawId = window.prompt(
+        'ID do paciente no AquaAccess (mesmo número do ID Usuário no XPE):',
+        ''
+      );
+      if (rawId === null) return;
+      const patientId = Number(String(rawId).trim());
+      if (!Number.isFinite(patientId) || patientId < 1) {
+        alert('Informe um ID numérico válido.');
+        return;
+      }
+      let p = null;
+      try {
+        p = await window.clubAccess.patientsGet(patientId);
+      } catch {
+        p = null;
+      }
+      if (!p) {
+        alert('Paciente não encontrado.');
+        return;
+      }
+      await runXpeSyncForPatient(patientId, String(p.full_name || '').trim());
+      void refreshDashboard();
       return;
     }
 
     if (action === 'photos') {
-      if (!runtime.connected) {
-        alert('Conecte o dispositivo antes de enviar fotos.');
-        return;
+      try {
+        const r = await window.clubAccess.xpeExportOpenLastFolder();
+        if (!r?.ok) {
+          alert(r?.error || 'Nenhuma exportação nesta sessão. Use “Exportar usuários” primeiro.');
+        }
+      } catch (e) {
+        alert(String(e?.message || e));
       }
-      const pending = Math.max(0, runtime.pendingPhotos);
-      if (pending <= 0) {
-        alert('Não há fotos pendentes na fila. Use “Sincronizar usuários” para atualizar a fila a partir dos cadastros.');
-        return;
-      }
-      runtime.pendingPhotos = 0;
-      saveDeviceRuntime(runtime);
-      pushDeviceLog({
-        type: 'info',
-        title: `Envio concluído — ${pending} foto${pending === 1 ? '' : 's'}`,
-        actor: 'Sistema',
-      });
       await refreshDeviceUI();
       return;
     }
@@ -692,6 +1656,12 @@
         </td>
         <td class="admin-data-table__col-actions">
           <div class="admin-row-actions">
+            <button type="button" class="admin-row-action" data-action="xpe-sync" data-id="${idNum}" title="Sincronizar Intelbras" aria-label="Sincronizar Intelbras">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <path d="M23 4v6h-6M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            </button>
             <button type="button" class="admin-row-action admin-row-action--block" data-action="block" data-id="${idNum}" title="${escapeHtml(blockTitle)}" aria-label="${escapeHtml(blockTitle)}">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
@@ -950,6 +1920,18 @@
         return;
       }
       await refreshPacientesList();
+      return;
+    }
+
+    if (action === 'xpe-sync') {
+      const row = pacientesCache.find((r) => Number(r.id) === id);
+      const name = String(row?.full_name || '').trim();
+      btn.disabled = true;
+      try {
+        await runXpeSyncForPatient(id, name);
+      } finally {
+        btn.disabled = false;
+      }
       return;
     }
 
@@ -1496,6 +2478,7 @@
     const isDashboard = page === 'dashboard';
     if (isDashboard) {
       clearNavActive();
+      void refreshDashboard();
     } else {
       navBtns.forEach((btn) => {
         const active = btn.dataset.page === page;
@@ -1518,7 +2501,12 @@
       void refreshDeviceUI();
     }
     if (page === 'configuracoes') {
-      fillDeviceSettingsForm();
+      void (async () => {
+        await hydrateDeviceSettingsFromMain();
+        fillDeviceSettingsForm();
+        await fillXpeBridgeFromServer();
+        await refreshXpeWizard();
+      })();
     }
     if (page === 'acessos') {
       void refreshAcessos();
@@ -1658,52 +2646,235 @@
     if (action) void handleDeviceAction(action);
   });
 
-  document.getElementById('form-device-settings')?.addEventListener('submit', (e) => {
+  document.getElementById('field-xpe-bridge-port')?.addEventListener('input', () => updateXpeBridgeUrlHint());
+  document.getElementById('field-xpe-bridge-path')?.addEventListener('input', () => updateXpeBridgeUrlHint());
+  document.getElementById('field-pc-lan-ip')?.addEventListener('input', () => {
+    xpeWizardLanIp = getPcLanIpFromField();
+    updateXpeBridgeUrlHint();
+    updateXpeSetupChecklist({});
+  });
+  document.getElementById('field-xpe-device-url')?.addEventListener('change', () => {
+    syncDeviceUrlAndIpFields('url');
+    updateXpeSetupChecklist({});
+    void refreshXpeWizard();
+  });
+  document.getElementById('field-device-ip')?.addEventListener('change', () => {
+    syncDeviceUrlAndIpFields('ip');
+    updateXpeSetupChecklist({});
+  });
+  document.getElementById('field-device-port')?.addEventListener('change', () => {
+    syncDeviceUrlAndIpFields('ip');
+    updateXpeSetupChecklist({});
+  });
+  document.getElementById('field-xpe-web-user')?.addEventListener('input', () => {
+    syncOpenDoorCredsFromWebFields();
+    updateXpeSetupChecklist({});
+  });
+  document.getElementById('field-xpe-web-password')?.addEventListener('input', () => {
+    syncOpenDoorCredsFromWebFields();
+  });
+
+  document.getElementById('btn-xpe-setup-apply')?.addEventListener('click', () => {
+    void runXpeSetupApply();
+  });
+  document.getElementById('btn-xpe-setup-refresh')?.addEventListener('click', () => {
+    void refreshXpeWizard();
+  });
+  document.getElementById('btn-xpe-copy-action-url')?.addEventListener('click', async () => {
+    const val = String(document.getElementById('field-xpe-action-url')?.value || '').trim();
+    if (!val) {
+      alert('Nenhuma URL gerada. Execute "Detectar e configurar" primeiro.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(val);
+      setXpeWizardStatus('URL copiada para a área de transferência.', 'ok');
+    } catch {
+      const el = document.getElementById('field-xpe-action-url');
+      if (el) {
+        el.select();
+        document.execCommand('copy');
+        setXpeWizardStatus('URL selecionada — use Ctrl+C se a cópia automática falhar.', 'warn');
+      }
+    }
+  });
+  document.getElementById('field-xpe-action-url')?.addEventListener('input', (e) => {
+    if (e.target?.value) e.target.dataset.userEdited = '1';
+  });
+
+  document.querySelectorAll('input[name="colorTheme"]').forEach((el) => {
+    el.addEventListener('change', () => {
+      const theme = el.value === 'light' ? 'light' : 'dark';
+      window.ClubAccessTheme?.applyColorTheme?.(theme);
+    });
+  });
+
+  document.getElementById('btn-xpe-open-inbound-log')?.addEventListener('click', async () => {
+    try {
+      const r = await window.clubAccess.xpeBridgeOpenInboundLog();
+      if (!r?.ok) {
+        alert(r?.error || 'Não foi possível abrir o arquivo de log.');
+      }
+    } catch (e) {
+      alert(String(e?.message || e));
+    }
+  });
+
+  document.getElementById('form-device-settings')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const msgEl = document.getElementById('device-settings-msg');
     const prev = loadDeviceSettings();
-    const clubName = String(document.getElementById('field-club-name')?.value || '').trim();
-    const systemName = String(document.getElementById('field-system-name')?.value || '').trim();
-    const ip = String(document.getElementById('field-device-ip')?.value || '').trim();
-    const devicePort = String(document.getElementById('field-device-port')?.value || '').trim();
+
+    const urlRaw = String(document.getElementById('field-xpe-device-url')?.value || '').trim();
+    if (urlRaw) {
+      syncDeviceUrlAndIpFields('url');
+    } else {
+      syncDeviceUrlAndIpFields('ip');
+    }
+    syncOpenDoorCredsFromWebFields();
+
+    const clubName =
+      String(document.getElementById('field-club-name')?.value || '').trim() ||
+      prev.clubName ||
+      DEFAULT_DEVICE_SETTINGS.clubName;
+    const systemName =
+      String(document.getElementById('field-system-name')?.value || '').trim() ||
+      prev.systemName ||
+      DEFAULT_DEVICE_SETTINGS.systemName;
+    const deviceName =
+      String(document.getElementById('field-device-name')?.value || '').trim() ||
+      prev.deviceName ||
+      DEFAULT_DEVICE_SETTINGS.deviceName;
+    const locationLabel =
+      String(document.getElementById('field-location-label')?.value || '').trim() ||
+      prev.locationLabel ||
+      DEFAULT_DEVICE_SETTINGS.locationLabel;
+
+    const ipRaw = String(document.getElementById('field-device-ip')?.value || '').trim();
+    const ipNorm = normalizeDeviceIpv4(ipRaw);
+    const devicePort = String(document.getElementById('field-device-port')?.value || '').trim() || '80';
+    const lanIp = getPcLanIpFromField();
+
     const daysRaw = String(document.getElementById('field-exam-validity-days')?.value || '').trim();
-    const days = Number.parseInt(daysRaw, 10);
-    if (!clubName || !systemName || !ip || !devicePort || !Number.isFinite(days) || days < 1) {
+    let days = Number.parseInt(daysRaw, 10);
+    if (!Number.isFinite(days) || days < 1) {
+      days = Number(prev.defaultExamValidityDays) || DEFAULT_DEVICE_SETTINGS.defaultExamValidityDays;
+    }
+    const weekdayChecks = Array.from(document.querySelectorAll('input[name="examAllowedWeekdays"]:checked'));
+    let examAllowedWeekdays = normalizeExamAllowedWeekdays(weekdayChecks.map((el) => Number(el.value)));
+    if (examAllowedWeekdays.length < 1) {
+      examAllowedWeekdays = Array.isArray(prev.examAllowedWeekdays)
+        ? prev.examAllowedWeekdays
+        : DEFAULT_DEVICE_SETTINGS.examAllowedWeekdays;
+    }
+
+    if (!ipNorm) {
       if (msgEl) {
-        msgEl.textContent = 'Preencha nome do clube, nome do sistema, IP, porta e validade do exame (dias ≥ 1).';
+        msgEl.textContent =
+          'Informe o IP do XPE (IPv4 com pontos, ex.: 192.168.0.67) ou a URL do painel.';
         msgEl.hidden = false;
         msgEl.style.color = '#fca5a5';
       }
       return;
     }
+    if (normalizeDevicePort(devicePort) == null) {
+      if (msgEl) {
+        msgEl.textContent = 'Porta inválida. Use um número entre 1 e 65535 (ex.: 80).';
+        msgEl.hidden = false;
+        msgEl.style.color = '#fca5a5';
+      }
+      return;
+    }
+    if (!lanIp) {
+      if (msgEl) {
+        msgEl.textContent =
+          'Informe o IP deste computador na LAN (para o XPE enviar o Log de Acesso). Use Detectar se precisar.';
+        msgEl.hidden = false;
+        msgEl.style.color = '#fca5a5';
+      }
+      return;
+    }
+
+    const clubNameEl = document.getElementById('field-club-name');
+    const systemNameEl = document.getElementById('field-system-name');
+    const examDaysEl = document.getElementById('field-exam-validity-days');
+    if (clubNameEl) clubNameEl.value = clubName;
+    if (systemNameEl) systemNameEl.value = systemName;
+    if (examDaysEl) examDaysEl.value = String(days);
+
     const autoSync5Min = Boolean(document.getElementById('toggle-auto-sync')?.checked);
     const blockExpiredExams = Boolean(document.getElementById('toggle-block-expired')?.checked);
     const notify5DaysBefore = Boolean(document.getElementById('toggle-notify-5days')?.checked);
     const notifyDeniedAccess = Boolean(document.getElementById('toggle-notify-denied')?.checked);
     const dailyEmailSummary = Boolean(document.getElementById('toggle-daily-email')?.checked);
+    const colorThemeInput = document.querySelector('input[name="colorTheme"]:checked');
+    const colorTheme = colorThemeInput?.value === 'light' ? 'light' : 'dark';
+
+    let openDoorBase = String(document.getElementById('field-xpe-open-door-base')?.value || '').trim();
+    if (!openDoorBase) {
+      openDoorBase = buildDeviceUrlFromIpPort(ipNorm, devicePort);
+      const baseEl = document.getElementById('field-xpe-open-door-base');
+      if (baseEl) baseEl.value = openDoorBase;
+    }
+
+    const webUser = String(document.getElementById('field-xpe-web-user')?.value || '').trim();
+    const webPassword = String(document.getElementById('field-xpe-web-password')?.value || '');
 
     saveDeviceSettings({
       ...prev,
       clubName,
       systemName,
-      ip,
-      devicePort,
+      deviceName,
+      locationLabel,
+      ip: ipNorm,
+      devicePort: String(normalizeDevicePort(devicePort)),
       defaultExamValidityDays: days,
+      examAllowedWeekdays,
       clubDisplayName: systemName,
       autoSync5Min,
       blockExpiredExams,
       notify5DaysBefore,
       notifyDeniedAccess,
       dailyEmailSummary,
+      colorTheme,
     });
     applyBrandingFromSettings();
+
+    const bridgePayload = {
+      enabled: Boolean(document.getElementById('toggle-xpe-bridge-enabled')?.checked),
+      port: Number.parseInt(String(document.getElementById('field-xpe-bridge-port')?.value || '37891'), 10),
+      path: String(document.getElementById('field-xpe-bridge-path')?.value || '/intelbras/xpe').trim(),
+      preferredLanIp: lanIp || '',
+      sharedSecret: String(document.getElementById('field-xpe-bridge-secret')?.value || ''),
+      openDoorWhenGranted: Boolean(document.getElementById('toggle-xpe-open-door')?.checked),
+      openDoorBaseUrl: openDoorBase,
+      openDoorUser: webUser,
+      openDoorPassword: webPassword,
+      openDoorNum: String(document.getElementById('field-xpe-open-door-num')?.value || '1').trim() || '1',
+      logInboundRequests: Boolean(document.getElementById('toggle-xpe-bridge-log-inbound')?.checked),
+    };
+    let bridgeMsg = '';
+    try {
+      const br = await window.clubAccess.xpeBridgeSetSettings(bridgePayload);
+      if (!br?.ok) {
+        bridgeMsg = ` Bridge HTTP: ${br?.bridgeStartError || 'falha ao aplicar.'}`;
+      }
+    } catch (err) {
+      bridgeMsg = ` Bridge HTTP: ${String(err?.message || err)}`;
+    }
+    await fillXpeBridgeFromServer();
+    updateXpeSetupChecklist({});
+
     if (msgEl) {
-      msgEl.textContent = 'Alterações salvas.';
-      msgEl.style.color = '';
+      msgEl.textContent = bridgeMsg ? `Salvo.${bridgeMsg}` : 'Alterações salvas.';
+      msgEl.style.color = bridgeMsg ? '#fca5a5' : '';
       msgEl.hidden = false;
     }
     if (activePage === 'dispositivo') {
       void refreshDeviceUI();
+    }
+    if (activePage === 'dashboard') {
+      void refreshDashboard();
     }
   });
 
@@ -1741,6 +2912,7 @@
   });
 
   applyBrandingFromSettings();
+  void hydrateDeviceSettingsFromMain().then(() => applyBrandingFromSettings());
   void refreshAdminSyncPanel();
   showPage('dashboard');
 })();
