@@ -515,7 +515,21 @@ function updatePatient(id, fullName, cpf, phone) {
   if (!noCpf && cpfOwnerId !== null && cpfOwnerId !== pid) {
     return { ok: false, error: 'Este CPF já pertence a outro paciente.' };
   }
-  const cpfToStore = noCpf ? buildUniqueNoCpfMarker() : cpfDigits;
+  let cpfToStore;
+  if (noCpf) {
+    const existing = getPatientById(pid);
+    const existingCpf = String(existing?.cpf || '').trim();
+    const existingDigits = normalizeCpf(existingCpf);
+    if (existingDigits.length === 11) {
+      cpfToStore = existingDigits;
+    } else if (existingCpf.startsWith('NOCPF:')) {
+      cpfToStore = existingCpf;
+    } else {
+      cpfToStore = buildUniqueNoCpfMarker();
+    }
+  } else {
+    cpfToStore = cpfDigits;
+  }
   try {
     db.run('UPDATE patients SET full_name = ?, cpf = ?, phone = ? WHERE id = ?', [
       String(fullName).trim(),
