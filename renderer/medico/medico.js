@@ -1,4 +1,6 @@
 (() => {
+  window.ClubAccessTheme?.initColorTheme?.();
+
   if (sessionStorage.getItem('clubAccessRole') !== 'medico') {
     window.location.href = '../login/login.html';
     return;
@@ -11,6 +13,9 @@
   let suggestTimer = null;
   /** @type {'pacientes' | 'exames'} */
   let activeNavPage = 'pacientes';
+  const DEVICE_SETTINGS_KEY = 'clubAccessDeviceSettings';
+  const DEFAULT_EXAM_VALIDITY_DAYS = 30;
+  const DEFAULT_ALLOWED_WEEKDAYS = [1, 2, 3, 4, 5];
 
   const navBtns = document.querySelectorAll('.medico-nav-item');
   const views = {
@@ -19,8 +24,6 @@
   };
   const form = document.getElementById('form-patient');
   const msg = document.getElementById('patient-msg');
-  const fieldCpf = document.getElementById('field-cpf');
-  const fieldNoCpf = document.getElementById('field-no-cpf');
   const fieldPhone = document.getElementById('field-phone');
   const fieldFullname = document.getElementById('field-fullname');
   const fieldPatientId = document.getElementById('field-patient-id');
@@ -43,6 +46,32 @@
   const topbarSearch = document.getElementById('topbar-search');
   const tbodyExamsDone = document.getElementById('tbody-exams-done');
   const examsDoneEmpty = document.getElementById('exams-done-empty');
+
+  function normalizeAllowedWeekdays(raw) {
+    if (!Array.isArray(raw)) return [...DEFAULT_ALLOWED_WEEKDAYS];
+    const uniq = Array.from(
+      new Set(
+        raw
+          .map((v) => Number(v))
+          .filter((v) => Number.isInteger(v) && v >= 0 && v <= 6)
+      )
+    ).sort((a, b) => a - b);
+    return uniq.length ? uniq : [...DEFAULT_ALLOWED_WEEKDAYS];
+  }
+
+  function loadExamRuleSettings() {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(localStorage.getItem(DEVICE_SETTINGS_KEY) || '{}');
+    } catch {
+      parsed = {};
+    }
+    const validityDays = Number.parseInt(String(parsed?.defaultExamValidityDays ?? ''), 10);
+    return {
+      validityDays: Number.isFinite(validityDays) && validityDays >= 1 ? validityDays : DEFAULT_EXAM_VALIDITY_DAYS,
+      allowedWeekdays: normalizeAllowedWeekdays(parsed?.examAllowedWeekdays),
+    };
+  }
 
   const modalDelete = document.getElementById('modal-delete-patient');
   const modalDeleteBackdrop = document.getElementById('modal-delete-backdrop');
@@ -146,29 +175,12 @@
     sidebarName.textContent = disp || displayUserLabel(sessionStorage.getItem('clubAccessUser'));
   }
 
-  function formatCpfDigits(val) {
-    return String(val || '').replace(/\D/g, '');
-  }
-
-  function formatCpfMask(digits) {
-    const d = formatCpfDigits(digits).slice(0, 11);
-    if (d.length <= 3) return d;
-    if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-    if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-    return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-  }
-
   function formatPhoneBR(raw) {
     const d = String(raw || '').replace(/\D/g, '').slice(0, 11);
     if (d.length <= 2) return d.length ? `(${d}` : '';
     if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
     if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
     return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  }
-
-  function formatCpfShow(digits) {
-    const d = formatCpfDigits(digits);
-    return d.length === 11 ? formatCpfMask(d) : d || '—';
   }
 
   function normalizePhoneDigits(val) {
@@ -436,12 +448,6 @@
     if (!row || row.id == null) return;
     fieldPatientId.value = String(row.id);
     fieldFullname.value = row.full_name || '';
-    const cpfDigits = formatCpfDigits(row.cpf || '');
-    if (fieldNoCpf) {
-      fieldNoCpf.checked = !cpfDigits;
-    }
-    fieldCpf.value = formatCpfMask(cpfDigits);
-    syncCpfInputState();
     fieldPhone.value = formatPhoneBR(row.phone || '');
     await showPhotoFromDisk(row.photo_path || '');
     hideSuggest();
@@ -478,7 +484,7 @@
       nameEl.textContent = row.full_name || '—';
       const meta = document.createElement('span');
       meta.className = 'medico-ac__item-meta';
-      meta.textContent = `CPF ${formatCpfShow(row.cpf)}`;
+      meta.textContent = formatPhoneBR(row.phone || '') || '—';
       btn.appendChild(nameEl);
       btn.appendChild(meta);
       btn.addEventListener('mousedown', (e) => {
@@ -519,25 +525,6 @@
       suggestTimer = setTimeout(fn, 220);
     }
   }
-
-  fieldCpf.addEventListener('input', (e) => {
-    e.target.value = formatCpfMask(e.target.value);
-  });
-
-  function syncCpfInputState() {
-    if (!fieldCpf) return;
-    const noCpf = Boolean(fieldNoCpf?.checked);
-    fieldCpf.required = !noCpf;
-    fieldCpf.disabled = noCpf;
-    if (noCpf) {
-      fieldCpf.value = '';
-      fieldCpf.removeAttribute('aria-invalid');
-    }
-  }
-
-  fieldNoCpf?.addEventListener('change', () => {
-    syncCpfInputState();
-  });
 
   fieldPhone.addEventListener('input', (e) => {
     e.target.value = formatPhoneBR(e.target.value);
@@ -615,13 +602,14 @@
    */
   async function savePatientFromForm() {
     const fd = new FormData(form);
-    const fullName = fd.get('fullName');
-    const noCpf = fd.get('noCpf') === 'on';
-    const cpf = noCpf ? '' : formatCpfDigits(fd.get('cpf'));
+    const fullName = String(fd.get('fullName') || '').trim();
     const phone = fd.get('phone');
     const rawId = fd.get('patientId');
     const patientId = rawId ? Number(rawId) : 0;
 
+    if (!fullName) {
+      return { ok: false, error: 'Informe o nome completo.' };
+    }
     const phoneDigits = normalizePhoneDigits(phone);
     if (phoneDigits.length < 10 || phoneDigits.length > 11) {
       return { ok: false, error: 'Informe o telefone completo (DDD + número).' };
@@ -629,37 +617,30 @@
     if (!hasPhotoForSubmit(patientId)) {
       return { ok: false, error: 'É obrigatório enviar a foto do paciente (Upload ou Câmera).' };
     }
-    if (!noCpf && cpf.length !== 11) {
-      return { ok: false, error: 'Informe um CPF válido com 11 dígitos.' };
-    }
 
     if (patientId <= 0) {
-      if (!noCpf) {
-        const dupId = await window.clubAccess.patientsLookupCpf(cpf);
-        if (dupId != null) {
-          return {
-            ok: false,
-            error:
-              'Este CPF já está cadastrado. Use a busca pelo nome para editar o paciente.',
-          };
-        }
-      }
       const result = await window.clubAccess.patientsCreate({
         fullName,
-        cpf,
+        cpf: '',
         phone: phone || '',
         photoBase64: photoPendingBase64 || undefined,
+        syncToXpe: true,
       });
       if (!result.ok) {
         return { ok: false, error: result.error || 'Não foi possível salvar.' };
       }
-      return { ok: true, id: Number(result.id), created: true };
+      return {
+        ok: true,
+        id: Number(result.id),
+        created: true,
+        xpeSync: result.xpeSync || null,
+      };
     }
 
     const result = await window.clubAccess.patientsUpdate({
       id: patientId,
       fullName,
-      cpf,
+      cpf: '',
       phone: phone || '',
       photoBase64: photoPendingBase64 || undefined,
     });
@@ -691,12 +672,33 @@
       syncPatientFormChrome();
     }
 
-    const res = await window.clubAccess.examsRegister({ patientId: saved.id });
+    const examRules = loadExamRuleSettings();
+    const res = await window.clubAccess.examsRegister({
+      patientId: saved.id,
+      validityDays: examRules.validityDays,
+      allowedWeekdays: examRules.allowedWeekdays,
+    });
     if (res.ok) {
-      msg.textContent = saved.created
-        ? `Paciente cadastrado e exame registrado. Validade de 30 dias — até ${fmtDateBR(res.validUntil)}.`
-        : `Exame registrado. Validade de 30 dias — até ${fmtDateBR(res.validUntil)}.`;
-      msg.classList.add('medico-msg--ok');
+      let text = saved.created
+        ? `Paciente cadastrado e exame registrado. Validade de ${res.validityDaysUsed || examRules.validityDays} dias — até ${fmtDateBR(res.validUntil)}.`
+        : `Exame registrado. Validade de ${res.validityDaysUsed || examRules.validityDays} dias — até ${fmtDateBR(res.validUntil)}.`;
+      const xs = saved.xpeSync;
+      if (saved.created && xs) {
+        if (xs.ok) {
+          text += ' Enviado ao Intelbras XPE (usuário confirmado na lista).';
+        } else if (xs.skipped) {
+          text += ` AquaAccess OK; XPE não sincronizado: ${xs.error || 'configure IP/senha em Configurações.'}`;
+        } else {
+          text += ` AquaAccess OK; falha ao enviar ao XPE: ${xs.error || 'erro desconhecido'}. Use Dispositivo facial → Sincronizar Intelbras.`;
+        }
+      }
+      msg.textContent = text;
+      if (xs && saved.created && !xs.ok && !xs.skipped) {
+        msg.classList.remove('medico-msg--ok');
+        msg.classList.add('medico-msg--err');
+      } else {
+        msg.classList.add('medico-msg--ok');
+      }
       msg.hidden = false;
       void refreshPatientsOverview();
       void refreshExamsList();
@@ -714,9 +716,7 @@
   function syncTopbarPlaceholder(page) {
     if (!topbarSearch) return;
     topbarSearch.placeholder =
-      page === 'exames'
-        ? 'Buscar por paciente, CPF, situação ou data…'
-        : 'Buscar paciente, CPF…';
+      page === 'exames' ? 'Buscar por paciente, situação ou data…' : 'Buscar paciente…';
   }
 
   function showPage(page) {
@@ -752,10 +752,6 @@
     const { keepMessage = false } = options;
     form.reset();
     fieldPatientId.value = '';
-    if (fieldNoCpf) {
-      fieldNoCpf.checked = false;
-    }
-    syncCpfInputState();
     clearPhotoUi();
     hideSuggest();
     if (!keepMessage) {
@@ -796,8 +792,6 @@
 
     const fd = new FormData(form);
     const fullName = fd.get('fullName');
-    const noCpf = fd.get('noCpf') === 'on';
-    const cpf = noCpf ? '' : formatCpfDigits(fd.get('cpf'));
     const phone = fd.get('phone');
     const rawId = fd.get('patientId');
     const hadPatientId = rawId ? Number(rawId) > 0 : false;
@@ -810,7 +804,7 @@
       return;
     }
 
-    renderPatientSaveBanner(hadPatientId, fullName, cpf, phone || '');
+    renderPatientSaveBanner(hadPatientId, fullName, phone || '', saved.xpeSync);
     resetForm({ keepMessage: true });
     refreshPatientsOverview();
   });
@@ -839,13 +833,13 @@
 
     const rawQ = getTopbarQuery();
     const q = rawQ.toLowerCase();
-    const qDigits = formatCpfDigits(rawQ);
+    const qPhone = normalizePhoneDigits(rawQ);
     if (rawQ) {
       filtered = filtered.filter((r) => {
         const name = String(r.full_name || '').toLowerCase();
-        const cpf = formatCpfDigits(r.cpf);
+        const phone = normalizePhoneDigits(r.phone);
         if (q && name.includes(q)) return true;
-        if (qDigits.length >= 3 && cpf.includes(qDigits)) return true;
+        if (qPhone.length >= 3 && phone.includes(qPhone)) return true;
         return false;
       });
     }
@@ -886,7 +880,6 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${escapeHtml(r.full_name || '—')}</td>
-        <td>${escapeHtml(formatCpfShow(r.cpf))}</td>
         <td>${escapeHtml(formatPhoneBR(r.phone || ''))}</td>
         <td>${escapeHtml(fmtDateBR(r.valid_until))}</td>
         <td><span class="${meta.pillClass}">${escapeHtml(meta.label)}</span></td>
@@ -910,9 +903,14 @@
     if (!Number.isFinite(pid) || pid <= 0) return;
     msg.hidden = true;
     msg.classList.remove('medico-msg--err', 'medico-msg--ok', 'medico-msg--banner');
-    const res = await window.clubAccess.examsRegister({ patientId: pid });
+    const examRules = loadExamRuleSettings();
+    const res = await window.clubAccess.examsRegister({
+      patientId: pid,
+      validityDays: examRules.validityDays,
+      allowedWeekdays: examRules.allowedWeekdays,
+    });
     if (res.ok) {
-      msg.textContent = `Exame registrado. Validade de 30 dias — até ${fmtDateBR(res.validUntil)}.`;
+      msg.textContent = `Exame registrado. Validade de ${res.validityDaysUsed || examRules.validityDays} dias — até ${fmtDateBR(res.validUntil)}.`;
       msg.classList.add('medico-msg--ok');
       msg.hidden = false;
       void refreshPatientsOverview();
@@ -952,9 +950,7 @@
     const q = rawQ.toLowerCase();
     const filtered = q
       ? rows.filter((r) => {
-          const blob = [r.patient_name, r.patient_cpf, r.status, r.exam_date, r.valid_until]
-            .join(' ')
-            .toLowerCase();
+          const blob = [r.patient_name, r.status, r.exam_date, r.valid_until].join(' ').toLowerCase();
           return blob.includes(q);
         })
       : rows;
@@ -975,7 +971,6 @@
         <td>${escapeHtml(fmtDateBR(r.exam_date))}</td>
         <td>${escapeHtml(fmtDateBR(r.valid_until))}</td>
         <td>${escapeHtml(r.patient_name || '—')}</td>
-        <td>${escapeHtml(formatCpfShow(r.patient_cpf))}</td>
         <td><span class="${meta.pillClass}">${escapeHtml(meta.label)}</span></td>
       `;
       tbodyExamsDone.appendChild(tr);
@@ -1013,23 +1008,35 @@
       .replace(/"/g, '&quot;');
   }
 
-  function renderPatientSaveBanner(isUpdate, fullName, cpfDigits, phoneRaw) {
+  function renderPatientSaveBanner(isUpdate, fullName, phoneRaw, xpeSync) {
     const name = String(fullName || '').trim() || 'Paciente';
-    const cpfShow = formatCpfShow(cpfDigits);
     const tel = formatPhoneBR(String(phoneRaw || ''));
     const title = isUpdate ? 'Paciente atualizado com sucesso' : 'Paciente salvo com sucesso';
-    const hint = isUpdate
+    let hint = isUpdate
       ? 'As alterações já estão registradas. Use a busca pelo nome para revisar ou editar quando precisar.'
-      : 'O cadastro está na base do clube. Você pode usar Validar exame médico em seguida sem precisar salvar de novo. Para editar depois, use a busca pelo nome.';
+      : 'O cadastro está na base do clube. Você pode usar Validar exame médico em seguida sem precisar salvar de novo.';
+    if (!isUpdate && xpeSync) {
+      if (xpeSync.ok) {
+        hint += ' Enviado ao Intelbras XPE (usuário confirmado na lista do equipamento).';
+      } else if (xpeSync.skipped) {
+        hint += ` XPE não sincronizado: ${xpeSync.error || 'configure IP/usuário/senha em Configurações.'}`;
+      } else {
+        hint += ` Falha ao enviar ao XPE: ${xpeSync.error || 'erro'}. Tente Dispositivo facial → Sincronizar Intelbras.`;
+      }
+    }
     msg.innerHTML = `
       <div class="medico-msg-banner">
         <strong class="medico-msg-banner__title">${escapeHtml(title)}</strong>
         <span class="medico-msg-banner__name">${escapeHtml(name)}</span>
-        <span class="medico-msg-banner__meta">CPF ${escapeHtml(cpfShow)} · Tel. ${escapeHtml(tel || '—')}</span>
+        <span class="medico-msg-banner__meta">Tel. ${escapeHtml(tel || '—')}</span>
         <p class="medico-msg-banner__hint">${escapeHtml(hint)}</p>
       </div>`;
-    msg.classList.remove('medico-msg--err');
-    msg.classList.add('medico-msg--ok', 'medico-msg--banner');
+    msg.classList.remove('medico-msg--err', 'medico-msg--ok');
+    if (!isUpdate && xpeSync && !xpeSync.ok && !xpeSync.skipped) {
+      msg.classList.add('medico-msg--err', 'medico-msg--banner');
+    } else {
+      msg.classList.add('medico-msg--ok', 'medico-msg--banner');
+    }
     msg.hidden = false;
   }
 
@@ -1067,7 +1074,6 @@
   });
 
   hideSuggest();
-  syncCpfInputState();
   syncPatientFormChrome();
   syncTopbarPlaceholder('pacientes');
   void refreshPatientsOverview();

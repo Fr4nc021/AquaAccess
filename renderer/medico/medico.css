@@ -519,6 +519,12 @@
   justify-content: center;
 }
 
+.medico-btn-validar-exame {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+
 .medico-actions {
   display: flex;
   align-items: center;
