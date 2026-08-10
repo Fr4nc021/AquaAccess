@@ -1,0 +1,9 @@
+{
+  "listenHost": "0.0.0.0",
+  "listenPort": 3847,
+  "xpeUrl": "http://192.168.15.44",
+  "xpeUser": "admin",
+  "xpePassword": "COLOQUE_A_SENHA_WEB_DO_XPE",
+  "headless": false,
+  "slowMo": 400
+}

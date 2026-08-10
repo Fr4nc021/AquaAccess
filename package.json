@@ -6,7 +6,8 @@
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "xpe:test": "node xpeAutomation/test.js",
-    "xpe:install-browser": "npx playwright install chromium"
+    "xpe:install-browser": "npx playwright install chromium",
+    "medico:web": "node medico-web/server.js"
   },
   "keywords": [],
   "author": "",

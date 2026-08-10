@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POC Médico → XPE</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="header">
+      <p class="eyebrow">AquaAccess · POC</p>
+      <h1>Cadastro facial (médico)</h1>
+      <p class="sub">Informe nome e foto. O sistema gera o ID e envia ao Intelbras XPE.</p>
+      <p id="cfgHint" class="hint" hidden></p>
+    </header>
+
+    <section class="form-block" aria-labelledby="formTitle">
+      <h2 id="formTitle" class="sr-only">Novo cadastro</h2>
+      <form id="form" autocomplete="off">
+        <label class="field">
+          <span>Nome</span>
+          <input id="name" name="name" type="text" maxlength="60" required placeholder="Nome do paciente" />
+        </label>
+
+        <div class="field">
+          <span>Foto</span>
+          <div class="photo-row">
+            <div class="preview-wrap">
+              <img id="preview" alt="Pré-visualização" hidden />
+              <video id="camera" playsinline muted hidden></video>
+              <p id="photoPlaceholder" class="placeholder">Upload ou câmera</p>
+            </div>
+            <div class="photo-actions">
+              <label class="btn secondary file-btn">
+                Escolher arquivo
+                <input id="file" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+              </label>
+              <button type="button" id="btnCam" class="btn secondary">Usar câmera</button>
+              <button type="button" id="btnSnap" class="btn secondary" hidden>Capturar</button>
+              <button type="button" id="btnStopCam" class="btn ghost" hidden>Parar câmera</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" id="btnSubmit" class="btn primary">Salvar e enviar ao XPE</button>
+      </form>
+
+      <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+    </section>
+
+    <section class="list-block" aria-labelledby="listTitle">
+      <div class="list-head">
+        <h2 id="listTitle">Cadastros tentados</h2>
+        <button type="button" id="btnRefresh" class="btn ghost">Atualizar</button>
+      </div>
+      <div id="list" class="list">
+        <p class="muted">Nenhum ainda.</p>
+      </div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
