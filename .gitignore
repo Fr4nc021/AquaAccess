@@ -7,3 +7,13 @@ Thumbs.db
 dist/
 out/
 *.local
+
+# Instaladores / builds Electron (nunca versionar)
+release/
+release-*/
+release-out/
+release-build/
+
+# Config e dados locais do POC médico-web
+medico-web/config.json
+medico-web/data/
