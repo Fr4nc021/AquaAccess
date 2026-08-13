@@ -27,4 +27,19 @@ contextBridge.exposeInMainWorld('clubAccess', {
   reportsRows: (kind, periodStart, periodEnd) =>
     ipcRenderer.invoke('reports-rows', { kind, periodStart, periodEnd }),
   localDbStats: () => ipcRenderer.invoke('local-db-stats'),
+  deviceConnectivityCheck: (ip, port, timeoutMs) =>
+    ipcRenderer.invoke('device-connectivity-check', { ip, port, timeoutMs }),
+  dashboardSnapshot: () => ipcRenderer.invoke('dashboard-snapshot'),
+  xpeBridgeGetSettings: () => ipcRenderer.invoke('xpe-bridge-get-settings'),
+  xpeBridgeSetSettings: (payload) => ipcRenderer.invoke('xpe-bridge-set-settings', payload),
+  xpeBridgeGetStatus: () => ipcRenderer.invoke('xpe-bridge-get-status'),
+  xpeExportUserPack: () => ipcRenderer.invoke('xpe-export-user-pack'),
+  xpeExportOpenLastFolder: () => ipcRenderer.invoke('xpe-export-open-last-folder'),
+  xpeBridgeInboundLogPath: () => ipcRenderer.invoke('xpe-bridge-inbound-log-path'),
+  xpeBridgeOpenInboundLog: () => ipcRenderer.invoke('xpe-bridge-open-inbound-log'),
+  xpeSyncUser: (payload) => ipcRenderer.invoke('xpe-sync-user', payload),
+  deviceSettingsGet: () => ipcRenderer.invoke('device-settings-get'),
+  deviceSettingsSet: (payload) => ipcRenderer.invoke('device-settings-set', payload),
+  xpeSetupDiscover: (payload) => ipcRenderer.invoke('xpe-setup-discover', payload || {}),
+  xpeSetupApply: (payload) => ipcRenderer.invoke('xpe-setup-apply', payload),
 });

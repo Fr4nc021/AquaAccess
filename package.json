@@ -5,7 +5,9 @@
   "scripts": {
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dist": "node scripts/dist.js"
+    "dist": "node scripts/dist.js",
+    "xpe:test": "node xpeAutomation/test.js",
+    "xpe:install-browser": "npx playwright install chromium"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +15,7 @@
   "description": "Controle de acesso às piscinas do clube (desktop, offline-first)",
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "playwright": "^1.62.1",
     "sql.js": "^1.13.0"
   },
   "devDependencies": {

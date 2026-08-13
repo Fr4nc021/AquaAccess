@@ -20,7 +20,12 @@
             </div>
             <div>
               <p class="admin-device-summary__name" id="device-summary-name">—</p>
-              <p class="admin-device-summary__hint">IP e rede do leitor em Configurações.</p>
+              <p class="admin-device-summary__hint">
+                XPE 3200 PLUS IP — IP/porta e bridge em Configurações. <strong>Exportar usuários</strong> gera pasta
+                CSV/fotos para cadastro manual no XPE (mesmo <strong>ID Usuário</strong> = ID do paciente).
+                Eventos chegam por HTTP enquanto o AquaAccess estiver aberto.
+              </p>
+              <p class="admin-device-summary__hint" id="device-bridge-status" style="margin-top: 6px; font-size: 0.85rem; opacity: 0.9">Bridge HTTP: —</p>
             </div>
           </div>
           <span class="admin-device-status" id="device-status-wrap">
@@ -55,7 +60,7 @@
         <div class="admin-panel__head">
           <div>
             <h2 class="admin-panel__title">Ações do dispositivo</h2>
-            <p class="admin-panel__subtitle">Comandos enviados ao leitor facial</p>
+            <p class="admin-panel__subtitle">Teste de rede, exportação CSV/fotos e sync Playwright</p>
           </div>
         </div>
         <div class="admin-device-actions">
@@ -76,8 +81,19 @@
                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
               </svg>
             </span>
-            <span class="admin-device-action__title">Sincronizar usuários</span>
-            <span class="admin-device-action__desc" id="device-action-sync-sub">Enviar cadastros ao dispositivo</span>
+            <span class="admin-device-action__title">Exportar usuários</span>
+            <span class="admin-device-action__desc" id="device-action-sync-sub">Gera pasta CSV + fotos (cadastro manual no XPE)</span>
+          </button>
+          <button type="button" class="admin-device-action" data-device-action="xpe-sync">
+            <span class="admin-device-action__icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+            </span>
+            <span class="admin-device-action__title">Sincronizar Intelbras</span>
+            <span class="admin-device-action__desc" id="device-action-xpe-sync-sub">Playwright no painel web (credenciais + Chromium)</span>
           </button>
           <button type="button" class="admin-device-action" data-device-action="photos">
             <span class="admin-device-action__icon" aria-hidden="true">
@@ -87,8 +103,8 @@
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             </span>
-            <span class="admin-device-action__title">Enviar fotos pendentes</span>
-            <span class="admin-device-action__desc" id="device-action-photos-sub">Nenhuma foto na fila</span>
+            <span class="admin-device-action__title">Abrir última exportação</span>
+            <span class="admin-device-action__desc" id="device-action-photos-sub">Abre a pasta CSV/fotos desta sessão</span>
           </button>
           <button type="button" class="admin-device-action" data-device-action="block">
             <span class="admin-device-action__icon" aria-hidden="true">
